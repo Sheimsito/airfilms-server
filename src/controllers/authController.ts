@@ -17,7 +17,7 @@ import { userDAO } from "../dao/userDAO";
 const register = async (req: Request, res: Response) => {
     try {
         const { name, lastName, age, email, password } = req.body;
-        const user = await userDAO.create({ name, lastName, age, email, password });
+        const user = await userDAO.create({ name, lastName, age, email, password }); 
         res.status(201).json({ userId: user.id });
     } catch (error: unknown) {
         if(error instanceof Error && error.message === "Este correo ya está registrado.") {

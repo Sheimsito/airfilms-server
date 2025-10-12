@@ -15,10 +15,12 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.3",
     "@types/node": "^24.7.2",
     "eslint": "^9.37.0",
