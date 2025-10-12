@@ -7,4 +7,7 @@ const router = Router();
 // Create a new user
 router.post("/register", authController.register);
 
+// Login a user
+router.post("/login", authController.login);
+
 export default router;

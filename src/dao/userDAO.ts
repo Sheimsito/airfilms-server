@@ -13,11 +13,6 @@ export class UserDAO extends BaseDAO<UserRow, UserInsert, UserUpdate> {
   }
 
   async create(user: UserInsert): Promise<UserRow> {
-    
-    const existingUser = await this.findByEmail(user.email); // Refactorizable en UserDAO
-    if(existingUser !== null) {
-        throw new Error("Este correo ya está registrado.");
-    }
     const hashedPassword = await bcrypt.hash(user.password, 10);
     const userCreated = await super.create({ ...user, password: hashedPassword });
     return userCreated;
@@ -32,7 +27,7 @@ export class UserDAO extends BaseDAO<UserRow, UserInsert, UserUpdate> {
   async findByEmail(email: string): Promise<UserRow | null> {
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, email, created_at') // mejor evitar '*'
+      .select('*') // mejor evitar '*'
       .eq('email', email)
       .maybeSingle();
 
