@@ -76,6 +76,7 @@ export class BaseDAO<Row, Insert, Update> {
     const updateData: any = payload;
     const { data, error } = await supabase
       .from(this.table)
+      // @ts-ignore 
       .update(updateData)
       .eq('id', id)
       .select('*')

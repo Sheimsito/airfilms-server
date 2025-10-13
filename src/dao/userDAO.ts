@@ -38,6 +38,20 @@ export class UserDAO extends BaseDAO<UserRow, UserInsert, UserUpdate> {
 
     return (data as UserRow | null) ?? null;
   }
+
+  async updateResetPasswordJti(userId: string, jwtid: string): Promise<void> {
+    const updateData = { resetPasswordJti: jwtid } as any;
+    const { error } = await supabase
+      .from('users')
+      // @ts-ignore
+      .update(updateData)
+      .eq('id', userId);
+      
+    if (error) {
+      console.error(`[UserDAO] updateResetPasswordJti failed for ${userId}:`, error.message);
+      throw new Error(`[users] updateResetPasswordJti: ${error.message}`);
+    }
+  }
 }
 
 export const userDAO = new UserDAO();

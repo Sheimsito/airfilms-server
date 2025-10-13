@@ -37,9 +37,9 @@ const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) 
   };
   
   // Rate limiter for the login route
-  const loginLimiter = rateLimit({
+  const rateLimiter = rateLimit({
     windowMs: 5 * 60 * 1000, // 5 minutos
-    max: process.env.NODE_ENV === 'production' ? 50 : 100, // More restrictive in production
+    max: config.nodeEnv === 'production' ? 5 : 3, // More restrictive in production
     message: {
       success: false,
       message: "Demasiados intentos. Espera 5 minutos."
@@ -47,10 +47,10 @@ const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) 
     standardHeaders: true,
     legacyHeaders: false,
     // Use the default generator that handles IPv6 correctly
-    skip: (req) => {
+    skip: (req: Request) => {
       // Skip rate limiting in development with environment variable
-      return process.env.NODE_ENV === 'development' && process.env.SKIP_RATE_LIMIT === 'true';
+      return config.nodeEnv === 'development';
     }
   });
 
-  export { authenticateToken, loginLimiter };
+  export { authenticateToken, rateLimiter };

@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
-import { userDAO } from "../dao/userDAO";
+import { UserDAO, userDAO } from "../dao/userDAO";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import config from "../config/config";
-
+import { sendMail } from "../service/resendService";
 
 interface RegisterRequest {
     name: string;
@@ -155,5 +155,64 @@ const logout = async (req: Request , res: Response) => {
    }
 }
 
+/**
+ * Sends an email with a password reset link.
+ *
+ * @async
+ * @function forgotPassword
+ * @param {Request} req Express request object containing the user email.
+ * @param {Response} res Express response object.
+ * @returns {Promise<void>} Returns a JSON object with:
+ *
+ * - 200: `{ success: true, message: "Si el correo existe, se ha enviado un enlace de restablecimiento." }`
+ *   If the process completes successfully.
+ * - 202: `{ success: false, message: "Correo no registrado." }`
+ *   If the email is not registered.
+ * - 500: `{ success: false, message: err.message }`
+ *   If an internal error occurs.
+ */
 
-export default { register, login, logout };
+
+const forgotPassword = async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      console.log(email);
+      const user = await userDAO.findByEmail(email);
+      if (!user) {
+        return res.status(202).json({ success: false, message: "Correo no registrado." });
+      }
+      const jwtid = Math.random().toString(36).substring(2);
+      const resetToken = jwt.sign(
+        { userId: user.id },
+        config.jwtResetPasswordSecret,
+        { expiresIn: '1h' , jwtid }
+      );
+  
+      await userDAO.updateResetPasswordJti(user.id, jwtid);
+  
+      const resetLink = `${config.frontendUrl}/reset-password?token=${resetToken}`;
+  
+      // In development, send to verified Resend email
+      const emailToSend = config.nodeEnv === 'production'
+          ? 'kealgri@gmail.com'
+          : email;
+  
+      await sendMail({
+          to: emailToSend,
+          subject: "Restablecimiento de contraseña",
+          text: `Haz clic en el siguiente enlace para restablecer tu contraseña: ${resetLink}\n\nSolicitado para: ${email}`,
+          html: `
+              <p>Haz clic en el siguiente enlace para restablecer tu contraseña:</p>
+              <a href="${resetLink}">${resetLink}</a>
+              <p><strong>Solicitado para:</strong> ${email}</p>
+          `,
+      });
+  
+      res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('Error en forgotPassword:', err);
+      res.status(500).json({ success: false, message: err instanceof Error ? err.message : "Error interno del servidor"});
+    }
+  };
+
+export default { register, login, logout, forgotPassword };
