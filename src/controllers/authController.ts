@@ -127,4 +127,33 @@ const login = async (req: Request<{}, {}, LoginRequest>, res: Response) => {
     }
 }
 
-export default { register, login };
+// Logout
+
+/**
+ * Logs out a user and clears the cookie.
+ *
+ * @async
+ * @function logout
+ * @param {import('express').Request} req Express HTTP request object.
+ * @param {import('express').Response} res Express HTTP response object.
+ * @returns {Promise<void>} Does not return directly; sends a JSON response.
+ */
+
+
+const logout = async (req: Request , res: Response) => {
+   try{
+     const isProduction: boolean = config.nodeEnv === "production";
+     res.clearCookie("access_token", {
+        httpOnly: false,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+        path: "/"
+     });
+     return res.status(200).json({ message: "Cierre de sesión exitoso." });
+   } catch (error: unknown) {
+    return res.status(500).json({ message: "Inténtalo más tarde.", error: error instanceof Error ? error.message : "Error interno del servidor"});
+   }
+}
+
+
+export default { register, login, logout };
