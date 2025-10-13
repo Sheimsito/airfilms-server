@@ -97,12 +97,12 @@ const login = async (req: Request<{}, {}, LoginRequest>, res: Response) => {
             return res.status(403).json({ message: "Tu cuenta está deshabilitada." });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid: boolean = await bcrypt.compare(password, user.password);
         if(!isPasswordValid) {
             return res.status(401).json({ message: "Correo o contraseña incorrectos." });      
         }
 
-        const token = jwt.sign(
+        const token: string = jwt.sign(
             { userId: user.id }, 
             config.jwtSecret, 
             { expiresIn: "24h" } // 24 hours

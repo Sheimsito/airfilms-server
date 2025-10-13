@@ -1,10 +1,21 @@
-import app from "./app";
-import config from "./config/config";   
+import express, { Request, Response } from "express";
+import userRoutes from "./routes/userRoutes";
+import errorHandler from "./middleware/errorHandler";
+import notFound from "./middleware/notFound";
+import cookieParser from "cookie-parser";
+import config from "./config/config";
+import configureServer from "./config/server";
 
+// initialize the express app
+const app = express();
 
-    
+// configure the server
+configureServer(app);
+
+app.use(cookieParser());
+
 // Root route for Render health checks
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
     res.status(200).json({
         success: true,
         message: 'Airfilms API - Servidor funcionando correctamente',
@@ -15,13 +26,25 @@ app.get('/', (req, res) => {
     });
 });
 
+// use the user routes
+app.use(`${config.apiPrefix}/users`, userRoutes);
+
+// use the not found middleware
+app.use(notFound);
+// use the error handler middleware
+app.use(errorHandler);
+
+const PORT: number = config.port || 3000;
+
 // Start the server
-app.listen(config.port, () => {
-    console.log(`🚀 Servidor ejecutándose en puerto ${config.port}`);
-    console.log(`📱 API disponible en: http://localhost:${config.port}`);
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
+    console.log(`📱 API disponible en: http://localhost:${PORT}`);
     console.log(`🌍 Entorno: ${config.nodeEnv}`);
-    console.log(`📚 API Base: http://localhost:${config.port}${config.apiPrefix}`);
+    console.log(`📚 API Base: http://localhost:${PORT}${config.apiPrefix}`);
     console.log(`🔧 API_PREFIX configurado como: "${config.apiPrefix}"`);
     console.log(`🔧 NODE_ENV: ${config.nodeEnv}`);
     console.log(`🔧 API_VERSION: ${config.apiVersion}`);
 });
+
+export default app;
