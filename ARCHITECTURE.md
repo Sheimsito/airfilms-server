@@ -118,26 +118,28 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
 
 ```
 1. CLIENT
-   └─> POST /api/users/register
-       Body: { name, email, password, ... }
+   └─> POST /api/auth/register
+       Body: { name, lastName, age, email, password }
           ↓
-2. ROUTE (userRoutes.ts)
+2. ROUTE (routes/index.ts → authRoutes.ts)
    └─> router.post('/register', authController.register)
           ↓
 3. CONTROLLER (authController.ts)
-   ├─> Extrae datos del request body
-   ├─> Valida datos básicos
+   ├─> Valida campos requeridos (name, lastName, age, email, password)
+   ├─> Valida formato de email (regex)
+   ├─> Valida formato de contraseña (min 8 chars, mayúscula, número, especial)
+   ├─> Verifica que el email no exista (userDAO.findByEmail)
    └─> Llama a userDAO.create(userData)
           ↓
 4. DAO (userDAO.ts → baseDAO.ts)
-   ├─> userDAO extiende BaseDAO
+   ├─> userDAO.create() hashea la contraseña con bcrypt
    ├─> BaseDAO.create() ejecuta:
-   │   └─> supabase.from('users').insert([payload])
+   │   └─> supabase.from('users').insert([payload]).select('*').single()
    └─> Retorna el usuario creado
           ↓
 5. DATABASE (Supabase)
-   ├─> Valida constraints (unique email, not null, etc.)
-   ├─> Inserta registro
+   ├─> Valida constraints (unique email, not null, check constraints)
+   ├─> Inserta registro con valores por defecto (isDeleted: false, timestamps)
    └─> Retorna datos insertados
           ↓
 6. RESPONSE
@@ -153,19 +155,35 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
    └─> POST /api/auth/forgot-password
        Body: { email: "user@example.com" }
           ↓
-2. CONTROLLER
+2. CONTROLLER (authController.forgotPassword)
    ├─> Busca usuario por email (userDAO.findByEmail)
-   ├─> Genera token de recuperación (JWT)
-   ├─> Guarda token en DB (userDAO.updateResetToken)
+   ├─> Si no existe: retorna 202 (por seguridad, no revelar si existe)
+   ├─> Genera jwtid único (random string)
+   ├─> Crea JWT con userId y jwtid, expiración 1h
+   ├─> Guarda jwtid en DB (userDAO.updateResetPasswordJti)
           ↓
-3. EXTERNAL SERVICE (emailService)
-   ├─> emailService.sendPasswordReset(email, token)
-   ├─> Resend API envía email con link de recuperación
-   └─> Email: "Click aquí para resetear tu contraseña"
+3. EXTERNAL SERVICE (resendService)
+   ├─> Genera link: ${FRONTEND_URL}/reset-password?token=${resetToken}
+   ├─> En desarrollo: envía a email verificado (kealgri@gmail.com)
+   ├─> En producción: envía al email del usuario
+   ├─> sendMail() usa Resend API
+   └─> Email: "Haz clic para restablecer tu contraseña"
           ↓
-4. RESPONSE
+4. CLIENT (Usuario hace click en el link)
+   └─> POST /api/auth/reset-password
+       Body: { token: "jwt...", newPassword: "NewPass123!" }
+          ↓
+5. CONTROLLER (authController.resetPassword)
+   ├─> Verifica JWT (jwt.verify)
+   ├─> Busca usuario (userDAO.findById)
+   ├─> Verifica que user.resetPasswordJti === decoded.jti
+   ├─> Valida nueva contraseña (min 8, mayúscula, número, especial)
+   ├─> Invalida el token (updateResetPasswordJti con "")
+   ├─> Actualiza contraseña hasheada (userDAO.updateById)
+          ↓
+6. RESPONSE
    └─> Status: 200 OK
-       Body: { message: "Email de recuperación enviado" }
+       Body: { success: true, message: "Contraseña actualizada." }
 ```
 
 
@@ -248,35 +266,39 @@ app.use(errorHandler);             // Error handling
 ```
 src/
 ├── config/              # 🔧 Configuración
-│   └── config.ts        # Variables de entorno centralizadas
+│   ├── config.ts        # Variables de entorno centralizadas
+│   └── server.ts        # Configuración de Express (CORS, body parser, middlewares)
 │
 ├── controllers/         # 🎮 Controladores 
-│   └── authController.ts
+│   ├── authController.ts   # Registro, login, logout, forgot/reset password
+│   └── userController.ts   # Perfil de usuario, actualización, soft delete
 │
 ├── dao/                 # 🗄️ Data Access Objects
-│   ├── baseDAO.ts       # DAO genérico (CRUD base)
+│   ├── baseDAO.ts       # DAO genérico (CRUD + soft delete)
 │   └── userDAO.ts       # DAO específico de usuarios
 │
 ├── lib/                 # 📚 Librerías externas
-│   └── supabaseClient.ts # Cliente de Supabase
+│   └── supabaseClient.ts # Cliente de Supabase (tipado y genérico)
 │
 ├── middleware/          # 🛡️ Middlewares
-│   ├── auth.ts          # Verificación de autenticación
-│   └── errorHandler.ts  # Manejo centralizado de errores
+│   ├── auth.ts          # Autenticación JWT + rate limiting
+│   ├── errorHandler.ts  # Manejo centralizado de errores (Supabase, JWT, etc.)
+│   ├── logger.ts        # Logger de peticiones HTTP
+│   └── notFound.ts      # Manejo de rutas 404
 │
 ├── routes/              # 🛣️ Definición de rutas
-│   └── userRoutes.ts    # Rutas de usuarios
+│   ├── index.ts         # Router principal que agrupa todas las rutas
+│   ├── authRoutes.ts    # Rutas de autenticación (públicas)
+│   └── userRoutes.ts    # Rutas de usuario (protegidas)
 │
 ├── service/             # 🌐 Servicios externos e integraciones
-│   ├── emailService.ts      # Servicio de emails (Resend)
-│   ├── moviesApiService.ts  # API de películas (TMDB/OMDB)
-│   └── storageService.ts    # Gestión de archivos (Supabase Storage)
+│   └── resendService.ts # Servicio de emails (Resend API)
 │
 ├── types/               # 🏷️ Tipos TypeScript compartidos
-│   └── database.ts      # Tipos de base de datos (Supabase) - Single Source of Truth
+│   ├── database.ts      # Tipos de base de datos (Supabase) - Single Source of Truth
+│   └── express.d.ts     # Extensiones de tipos de Express (AuthRequest)
 │
-├── app.ts               # 🚀 Configuración de Express
-└── server.ts            # 🌐 Punto de entrada (HTTP server)
+└── server.ts            # 🌐 Punto de entrada principal (HTTP server)
 ```
 
 ## 🗄️ Base de Datos
@@ -492,19 +514,48 @@ class CachedMoviesApiService extends MoviesApiService {
 
 ### Implementadas
 
-✅ Variables de entorno para secrets  
-✅ CORS configurado  
-✅ Express JSON body parser (evita payload muy grandes)
+✅ **Variables de entorno para secrets**  
+✅ **CORS configurado** (múltiples orígenes, credentials habilitados)  
+✅ **Express JSON body parser** (límite de 10mb)  
+✅ **Hash de contraseñas** (bcrypt con 10 salt rounds)  
+✅ **Rate limiting** (express-rate-limit en login: 3-5 intentos/5min)  
+✅ **JWT authentication** (tokens con expiración de 24h)  
+✅ **Validación de input** (validación manual en controllers)  
+✅ **SQL injection prevention** (Supabase maneja prepared statements)  
+✅ **Middleware de autenticación** (verifica JWT en rutas protegidas)  
+✅ **Soft delete** (no elimina datos físicamente)  
+✅ **Cookie seguras** (httpOnly, secure en producción, sameSite)
+
+### Medidas de Seguridad Específicas
+
+**Contraseñas:**
+- Hash con bcrypt (10 salt rounds)
+- Validación: mínimo 8 caracteres, mayúscula, minúscula, número, carácter especial
+- Never retornadas en responses
+
+**JWT:**
+- Tokens firmados con secret seguro
+- Expiración de 24h para access tokens
+- Expiración de 1h para reset password tokens
+- JTI (JWT ID) único para reset tokens (previene reutilización)
+
+**Rate Limiting:**
+- Login: 3-5 intentos por 5 minutos
+- Skip en desarrollo para facilitar testing
+- Headers estándar de rate limit incluidos
+
+**CORS:**
+- Lista blanca de orígenes permitidos
+- Credentials habilitados para cookies
+- En desarrollo: permite todos los orígenes
 
 ### Pendientes
 
-⚠️ Hash de contraseñas (bcrypt)  
-⚠️ Rate limiting (express-rate-limit)  
 ⚠️ Helmet.js para headers de seguridad  
-⚠️ Validación de input (Zod/Joi)  
-⚠️ JWT authentication  
-⚠️ SQL injection prevention (Supabase lo maneja, pero validar inputs)
-
+⚠️ Input sanitization (DOMPurify para contenido HTML)  
+⚠️ CSRF protection  
+⚠️ Refresh tokens (para sessions de larga duración)  
+⚠️ Account lockout después de múltiples intentos fallidos
 ---
 
 ## 📚 Recursos Adicionales
@@ -516,6 +567,23 @@ class CachedMoviesApiService extends MoviesApiService {
 
 ---
 
+## 📊 Componentes Principales Implementados
+
+| Componente         | Descripción                                    | Estado           |
+|------------        |------------------------------------------------|------------------|
+| **AuthController** | Registro, login, logout, forgot/reset password | ✅ Implementado |
+| **UserController** | Perfil, actualización, soft delete             | ✅ Implementado |
+| **BaseDAO**        | CRUD genérico + soft delete                    | ✅ Implementado |
+| **UserDAO**        | Operaciones específicas de usuarios            | ✅ Implementado |
+| **Auth Middleware** | JWT verification + rate limiting              | ✅ Implementado |
+| **Error Handler**  | Manejo de errores Supabase/PostgreSQL          | ✅ Implementado |
+| **Logger Middleware** | Logging de requests/responses               | ✅ Implementado |
+| **NotFound Middleware** | Manejo de rutas 404                       | ✅ Implementado |
+| **Resend Service**  | Envío de emails transaccionales               | ✅ Implementado |
+
+---
+
 **Última actualización:** Octubre 2025  
-**Versión de arquitectura:** 1.0
+**Versión de arquitectura:** 1.5 
+**Estado:** Producción Ready (Backend Auth & User Management)
 
