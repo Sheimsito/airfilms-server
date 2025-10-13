@@ -10,10 +10,10 @@ const configureServer = (app: express.Application) => {
    
     app.use(cors({
         origin: function (origin, callback) {
-            // Lista de orígenes permitidos
+            // This is the list of allowed origins
             const allowedOrigins: string[] = [
                 'http://localhost:3000',
-                'http://localhost:5173', // Vite dev server
+                'http://localhost:5173', // Vite frontend dev server
                 config.frontendUrl
             ].filter(Boolean);
 

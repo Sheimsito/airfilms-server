@@ -101,7 +101,7 @@ const updateUserProfile = async (req: any, res: Response) => {
       // Handle password change if provided
       if (currentPassword && newPassword) {
         // Verify current password
-        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, existingUser.password);
+        const isCurrentPasswordValid: boolean = await bcrypt.compare(currentPassword, existingUser.password);
         if (!isCurrentPasswordValid) {
           return res.status(400).json({
             success: false,
@@ -118,8 +118,8 @@ const updateUserProfile = async (req: any, res: Response) => {
         }
   
         // Hash new password
-        const saltRounds = 10;
-        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+        const saltRounds: number = 10;
+        const hashedNewPassword: string = await bcrypt.hash(newPassword, saltRounds);
   
         // Update user with new password
         const updatedUser = await userDAO.updateById(userId, {
@@ -205,12 +205,12 @@ const softDeleteAccount = async (req: any, res: Response) => {
   
 
       // Soft delete the user account
-      const deleted = await userDAO.softDeleteById(userId);
+      const deleted: boolean = await userDAO.softDeleteById(userId);
       if (!deleted) {
         return res.status(404).json({ success: false, message: "Usuario no encontrado o ya eliminado." });
       }
   
-      const isProduction = config.nodeEnv === 'production';
+      const isProduction: boolean = config.nodeEnv === 'production';
       res.clearCookie("access_token", {
         httpOnly: false,
         secure: isProduction,
