@@ -155,6 +155,9 @@ const logout = async (req: Request , res: Response) => {
    }
 }
 
+interface ForgotPasswordRequest {
+    email: string;
+}
 /**
  * Sends an email with a password reset link.
  *
@@ -173,16 +176,15 @@ const logout = async (req: Request , res: Response) => {
  */
 
 
-const forgotPassword = async (req: Request, res: Response) => {
+const forgotPassword = async (req: Request<{}, {}, ForgotPasswordRequest>, res: Response) => {
     try {
       const { email } = req.body;
-      console.log(email);
       const user = await userDAO.findByEmail(email);
       if (!user) {
         return res.status(202).json({ success: false, message: "Correo no registrado." });
       }
-      const jwtid = Math.random().toString(36).substring(2);
-      const resetToken = jwt.sign(
+      const jwtid: string = Math.random().toString(36).substring(2);
+      const resetToken: string = jwt.sign(
         { userId: user.id },
         config.jwtResetPasswordSecret,
         { expiresIn: '1h' , jwtid }
@@ -190,10 +192,10 @@ const forgotPassword = async (req: Request, res: Response) => {
   
       await userDAO.updateResetPasswordJti(user.id, jwtid);
   
-      const resetLink = `${config.frontendUrl}/reset-password?token=${resetToken}`;
+      const resetLink: string = `${config.frontendUrl}/reset-password?token=${resetToken}`;
   
       // In development, send to verified Resend email (not production user emails)
-      const emailToSend = config.nodeEnv === 'development'
+      const emailToSend: string = config.nodeEnv === 'development'
           ? 'kealgri@gmail.com'
           : email;
   
@@ -208,13 +210,17 @@ const forgotPassword = async (req: Request, res: Response) => {
           `,
       });
   
-      res.status(200).json({ success: true });
-    } catch (err) {
-      console.error('Error en forgotPassword:', err);
+      res.status(200).json({ success: true, message: "Se ha enviado un enlace de restablecimiento." });
+    } catch (err: unknown) {
+      console.error('Error en forgotPassword:', err instanceof Error ? err.message : "Error interno del servidor");
       res.status(500).json({ success: false, message: err instanceof Error ? err.message : "Error interno del servidor"});
     }
   };
 
+  interface ResetPasswordRequest {
+    token: string;
+    newPassword: string;
+  }
   /**
  * Resets the user’s password using a JWT reset token.
  *
@@ -233,7 +239,7 @@ const forgotPassword = async (req: Request, res: Response) => {
  * - 500: `{ success: false, message: "Inténtalo de nuevo más tarde.", err: err.message }`
  *   If an internal error occurs.
  */
-const resetPassword = async (req: Request, res: Response) => {
+const resetPassword = async (req: Request<{}, {}, ResetPasswordRequest>, res: Response) => {
     try {
       const { token, newPassword} = req.body;
       const decoded: JwtPayload = jwt.verify(token, config.jwtResetPasswordSecret) as JwtPayload;
