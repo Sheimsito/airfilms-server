@@ -1,21 +1,18 @@
 import { Router } from "express";
-import authController from "../controllers/authController";
-import { rateLimiter } from "../middleware/auth";
-
-
+import userController from "../controllers/userController";
 
 const router = Router();
 
-// Create a new user
-router.post("/register", authController.register);
+// Note: All routes here are already protected by authenticateToken in routes/index.ts
 
-// Login a user
-router.post("/login", rateLimiter, authController.login);
+// Get user profile
+router.get("/profile", userController.getUserProfile);
 
-// Logout a user
-router.post("/logout", authController.logout);
+// Update user profile
+router.put("/profile", userController.updateUserProfile);
 
-// Forgot password
-router.post("/forgot-password", authController.forgotPassword);
+// Soft delete user profile
+router.delete("/profile", userController.softDeleteAccount); 
+
 
 export default router;

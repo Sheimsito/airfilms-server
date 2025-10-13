@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { UserDAO, userDAO } from "../dao/userDAO";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import config from "../config/config";
 import { sendMail } from "../service/resendService";
 
@@ -192,8 +192,8 @@ const forgotPassword = async (req: Request, res: Response) => {
   
       const resetLink = `${config.frontendUrl}/reset-password?token=${resetToken}`;
   
-      // In development, send to verified Resend email
-      const emailToSend = config.nodeEnv === 'production'
+      // In development, send to verified Resend email (not production user emails)
+      const emailToSend = config.nodeEnv === 'development'
           ? 'kealgri@gmail.com'
           : email;
   
@@ -215,4 +215,44 @@ const forgotPassword = async (req: Request, res: Response) => {
     }
   };
 
-export default { register, login, logout, forgotPassword };
+  /**
+ * Resets the user’s password using a JWT reset token.
+ *
+ * @async
+ * @function resetPassword
+ * @param {Request} req Express request object containing `token` and `newPassword`.
+ * @param {Response} res Express response object.
+ * @returns {Promise<void>} Returns a JSON object with:
+ *
+ * - 200: `{ success: true, message: "Contraseña actualizada." }`
+ *   If the password was updated successfully.
+ * - 400: `{ success: false, message: "Enlace inválido o ya utilizado." }`
+ *   If the token is invalid, expired, or already used.
+ * - 400: `{ success: false, message: "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial" }`
+ *   If the new password does not meet security requirements.
+ * - 500: `{ success: false, message: "Inténtalo de nuevo más tarde.", err: err.message }`
+ *   If an internal error occurs.
+ */
+const resetPassword = async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword} = req.body;
+      const decoded: JwtPayload = jwt.verify(token, config.jwtResetPasswordSecret) as JwtPayload;
+      const user = await userDAO.findById(decoded.userId);
+      if(!user || user.resetPasswordJti !== decoded.jti){
+          return res.status(400).json({ success: false, message: "Enlace inválido o ya utilizado." });
+      }
+  
+      if(newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)){
+          return res.status(400).json({ success: false, message: "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial" });
+      }
+  
+      // Invalidate the token and update the password
+      await userDAO.updateResetPasswordJti(user.id, "");
+      await userDAO.updateById(user.id, { password: await bcrypt.hash(newPassword, 10) });
+  
+      res.status(200).json({ success: true, message: "Contraseña actualizada." });
+    } catch (err: unknown) {
+      res.status(500).json({ success: false, message: "Inténtalo de nuevo más tarde." , err: err instanceof Error ? err.message : "Error interno del servidor"});
+    }
+  };
+export default { register, login, logout, forgotPassword, resetPassword };

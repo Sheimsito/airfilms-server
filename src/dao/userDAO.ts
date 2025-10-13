@@ -40,11 +40,10 @@ export class UserDAO extends BaseDAO<UserRow, UserInsert, UserUpdate> {
   }
 
   async updateResetPasswordJti(userId: string, jwtid: string): Promise<void> {
-    const updateData = { resetPasswordJti: jwtid } as any;
     const { error } = await supabase
       .from('users')
       // @ts-ignore
-      .update(updateData)
+      .update({ resetPasswordJti: jwtid })
       .eq('id', userId);
       
     if (error) {

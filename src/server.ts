@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import userRoutes from "./routes/userRoutes";
+import indexRoutes from "./routes/index";
 import errorHandler from "./middleware/errorHandler";
 import notFound from "./middleware/notFound";
 import cookieParser from "cookie-parser";
@@ -27,7 +27,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // use the user routes
-app.use(`${config.apiPrefix}/users`, userRoutes);
+app.use(`${config.apiPrefix}`, indexRoutes);
 
 // use the not found middleware
 app.use(notFound);

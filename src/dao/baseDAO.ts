@@ -86,6 +86,16 @@ export class BaseDAO<Row, Insert, Update> {
     return data as Row;
   }
 
+  async softDeleteById(id: string | number) {
+    const { error } = await supabase
+      .from(this.table)
+      // @ts-ignore
+      .update({ isDeleted: true })
+      .eq('id', id);
+    if (error) throw new Error(`[${this.table}] softDeleteById: ${error.message}`);
+    return true;
+  }
+
   // This is the deleteById method
   async deleteById(id: string | number) {
     const { error } = await supabase.from(this.table).delete().eq('id', id);

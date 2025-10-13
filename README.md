@@ -20,14 +20,23 @@ Backend API para la plataforma AirFilms construido con Node.js, Express, TypeScr
 
 ## ✨ Características
 
-- 🔐 Sistema de autenticación y registro de usuarios
-- 🗄️ Integración con Supabase (PostgreSQL)
-- 🏗️ Arquitectura en capas (DAO, Services, Controllers)
-- 📝 TypeScript para type-safety
-- 🔄 Hot-reload en desarrollo con `tsx`
-- 🛡️ Manejo centralizado de errores
-- ✅ Validación de datos
-- 🔒 Variables de entorno seguras
+- 🔐 **Autenticación completa**: Registro, login, logout, recuperación de contraseña
+- 👤 **Gestión de usuarios**: Perfil, actualización, soft delete
+- 🗄️ **Integración con Supabase** (PostgreSQL)
+- 🏗️ **Arquitectura en capas** (DAO, Services, Controllers)
+- 📝 **TypeScript** para type-safety completa
+- 🔄 **Hot-reload** en desarrollo con `tsx`
+- 🛡️ **Manejo centralizado de errores** (Supabase, JWT, validación)
+- ✅ **Validación robusta** de datos de entrada
+- 🔒 **Seguridad implementada**:
+  - Bcrypt para contraseñas (10 salt rounds)
+  - JWT para autenticación (24h)
+  - Rate limiting en login (3-5 intentos/5min)
+  - CORS configurado
+  - Cookies seguras (httpOnly, secure)
+- 📧 **Email transaccional** con Resend API
+- 📊 **Logging** de requests/responses
+- 🚫 **Soft delete** (no eliminación física de datos)
 
 ---
 
@@ -153,81 +162,285 @@ npm run lint
 ```
 airfilms-server/
 ├── src/
-│   ├── config/           # Configuración de la aplicación
-│   │   └── config.ts     # Variables de entorno centralizadas
-│   ├── controllers/      # Controladores de rutas
-│   │   └── authController.ts
-│   ├── dao/              # Data Access Objects
-│   │   ├── baseDAO.ts    # DAO genérico con operaciones CRUD
-│   │   └── userDAO.ts    # DAO específico de usuarios
-│   ├── lib/              # Librerías y clientes externos
+│   ├── config/              # Configuración de la aplicación
+│   │   ├── config.ts        # Variables de entorno centralizadas
+│   │   └── server.ts        # Configuración de Express (CORS, middlewares)
+│   ├── controllers/         # Controladores de rutas
+│   │   ├── authController.ts   # Autenticación y recuperación de contraseña
+│   │   └── userController.ts   # Gestión de perfil de usuario
+│   ├── dao/                 # Data Access Objects
+│   │   ├── baseDAO.ts       # DAO genérico (CRUD + soft delete)
+│   │   └── userDAO.ts       # DAO específico de usuarios
+│   ├── lib/                 # Librerías y clientes externos
 │   │   └── supabaseClient.ts
-│   ├── middleware/       # Middlewares de Express
-│   │   ├── auth.ts       # Middleware de autenticación
-│   │   └── errorHandler.ts
-│   ├── routes/           # Definición de rutas
-│   │   └── userRoutes.ts
-│   ├── service/          # Integraciones con servicios externos
-│   │   ├── emailService.ts    # Resend para emails
-│   │   └── moviesApiService.ts # TMDB para películas
-│   ├── types/            # Tipos TypeScript (Single Source of Truth)
-│   │   └── database.ts   # Tipos de base de datos Supabase
-│   ├── app.ts            # Configuración de Express
-│   └── server.ts         # Punto de entrada de la aplicación
-├── .env                  # Variables de entorno (no versionado)
+│   ├── middleware/          # Middlewares de Express
+│   │   ├── auth.ts          # JWT authentication + rate limiting
+│   │   ├── errorHandler.ts  # Manejo de errores centralizados
+│   │   ├── logger.ts        # Logger de requests/responses
+│   │   └── notFound.ts      # Manejo de rutas 404
+│   ├── routes/              # Definición de rutas
+│   │   ├── index.ts         # Router principal
+│   │   ├── authRoutes.ts    # Rutas de autenticación (públicas)
+│   │   └── userRoutes.ts    # Rutas de usuario (protegidas)
+│   ├── service/             # Integraciones con servicios externos
+│   │   └── resendService.ts # Envío de emails transaccionales
+│   ├── types/               # Tipos TypeScript (Single Source of Truth)
+│   │   ├── database.ts      # Tipos de base de datos Supabase
+│   │   └── express.d.ts     # Extensiones de tipos Express
+│   └── server.ts            # Punto de entrada de la aplicación
+├── .env                     # Variables de entorno (no versionado)
 ├── .gitignore
 ├── package.json
-├── tsconfig.json         # Configuración de TypeScript
-├── ARCHITECTURE.md       # Documentación de arquitectura
-├── README.md             # Este archivo
-└── SETUP.md              # Guía de configuración detallada
+├── tsconfig.json            # Configuración de TypeScript
+├── ARCHITECTURE.md          # Documentación detallada de arquitectura
+└── README.md                # Este archivo
 ```
 
 ---
 
 ## 🔌 API Endpoints
 
-### Autenticación
+### Base URL
+```
+http://localhost:5000/api
+```
 
-#### `POST /api/users/register`
+---
 
-Registra un nuevo usuario en el sistema.
+### 🔓 Autenticación (Públicas)
+
+Todas las rutas bajo `/api/auth` son públicas.
+
+#### `POST /api/auth/register`
+
+Registra un nuevo usuario.
 
 **Request Body:**
-
 ```json
 {
   "name": "Juan",
-  "lastName": "Pérez",
+  "lastName": "García",
   "age": 25,
-  "email": "juan.perez@example.com",
-  "password": "password123"
+  "email": "juan@example.com",
+  "password": "Password123!"
 }
 ```
 
-**Response (201 Created):**
+**Validaciones:**
+- Todos los campos obligatorios
+- Edad ≥ 13 años
+- Email formato válido
+- Password: min 8 chars, mayúscula, minúscula, número, carácter especial
 
+**Response (201 Created):**
 ```json
 {
-  "userId": "uuid-del-usuario"
+  "userId": "uuid-generado"
 }
 ```
 
 **Response (409 Conflict):**
-
 ```json
 {
   "message": "Este correo ya está registrado."
 }
 ```
 
-**Response (400 Bad Request):**
+---
 
+#### `POST /api/auth/login`
+
+Inicia sesión de usuario.
+
+**Rate Limit:** 3-5 intentos por 5 minutos
+
+**Request Body:**
 ```json
 {
-  "message": "Error interno del servidor"
+  "email": "juan@example.com",
+  "password": "Password123!"
 }
 ```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Inicio de sesión exitoso.",
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Set-Cookie:** `access_token` (httpOnly, 24h)
+
+**Response (401 Unauthorized):**
+```json
+{
+  "message": "Correo o contraseña incorrectos."
+}
+```
+
+**Response (403 Forbidden):**
+```json
+{
+  "message": "Tu cuenta está deshabilitada."
+}
+```
+
+---
+
+#### `POST /api/auth/logout`
+
+Cierra sesión (requiere autenticación).
+
+**Headers:** `Authorization: Bearer <token>` o Cookie
+
+**Response (200 OK):**
+```json
+{
+  "message": "Cierre de sesión exitoso."
+}
+```
+
+---
+
+#### `POST /api/auth/forgot-password`
+
+Solicita restablecimiento de contraseña.
+
+**Request Body:**
+```json
+{
+  "email": "juan@example.com"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true
+}
+```
+
+**Nota:** Por seguridad, siempre retorna 200 aunque el email no exista.
+
+---
+
+#### `POST /api/auth/reset-password`
+
+Restablece la contraseña con token recibido por email.
+
+**Request Body:**
+```json
+{
+  "token": "jwt-token-from-email",
+  "newPassword": "NewPassword123!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Contraseña actualizada."
+}
+```
+
+**Response (400 Bad Request):**
+```json
+{
+  "success": false,
+  "message": "Enlace inválido o ya utilizado."
+}
+```
+
+---
+
+### 🔒 Usuario (Protegidas)
+
+Todas las rutas bajo `/api/users` requieren autenticación.
+
+**Headers requeridos:**
+```
+Authorization: Bearer <token>
+```
+
+O cookie `access_token`.
+
+---
+
+#### `GET /api/users/profile`
+
+Obtiene el perfil del usuario autenticado.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "user": {
+    "id": "uuid",
+    "name": "Juan",
+    "lastName": "García",
+    "age": 25,
+    "email": "juan@example.com",
+    "isDeleted": false,
+    "createdAt": "2025-10-13T...",
+    "updatedAt": "2025-10-13T..."
+  }
+}
+```
+
+---
+
+#### `PUT /api/users/profile`
+
+Actualiza el perfil del usuario.
+
+**Request Body:**
+```json
+{
+  "name": "Juan Carlos",
+  "lastName": "García López",
+  "age": 26,
+  "email": "juancarlos@example.com",
+  "currentPassword": "Password123!",
+  "newPassword": "NewPassword123!"
+}
+```
+
+**Nota:** `currentPassword` y `newPassword` son opcionales. Si se proporcionan, se valida la contraseña actual y se actualiza.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "user": { /* usuario actualizado */ },
+  "message": "Perfil actualizado exitosamente."
+}
+```
+
+**Response (400 Bad Request):**
+```json
+{
+  "success": false,
+  "message": "La contraseña actual es incorrecta."
+}
+```
+
+---
+
+#### `DELETE /api/users/profile`
+
+Elimina la cuenta del usuario (soft delete).
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Cuenta eliminada."
+}
+```
+
+**Nota:** La cuenta se marca como `isDeleted: true` pero no se elimina físicamente de la base de datos.
 
 ---
 
@@ -244,15 +457,38 @@ Registra un nuevo usuario en el sistema.
 
 ## 🏛️ Arquitectura
 
-Este proyecto sigue una **arquitectura en capas** para mantener la separación de responsabilidades:
+Este proyecto sigue una **arquitectura en capas** con separación clara de responsabilidades:
 
-- **Controllers:** Manejan las peticiones HTTP y respuestas
-- **DAO (Data Access Objects):** Interactúan directamente con la base de datos
-- **Services:** Contienen la lógica de negocio (capa intermedia)
-- **Models:** Definen las interfaces y tipos de datos
-- **Middleware:** Procesan las peticiones antes de llegar a los controladores
+### Capas Implementadas
 
-Para más detalles, consulta [ARCHITECTURE.md](./ARCHITECTURE.md).
+1. **Presentation Layer (Routes + Controllers)**
+   - Manejo de HTTP requests/responses
+   - Validación de entrada
+   - Delegación de lógica
+
+2. **Business Logic Layer (Services)**
+   - Integración con APIs externas (Resend, etc.)
+   - Orquestación de operaciones complejas
+
+3. **Data Access Layer (DAOs)**
+   - Abstracción de base de datos
+   - BaseDAO genérico con CRUD
+   - DAOs específicos con queries custom
+
+4. **Database Layer (Supabase/PostgreSQL)**
+   - Almacenamiento persistente
+   - Row Level Security (RLS)
+   - Constraints y validaciones
+
+### Flujo de una Request
+
+```
+Client → Route → Middleware → Controller → DAO → Supabase → Database
+                    ↓
+                Logger, Auth, ErrorHandler
+```
+
+Para arquitectura detallada y patrones de diseño, consulta [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 
@@ -283,9 +519,23 @@ Este proyecto usa:
 
 ### Seguridad
 
-- 🔒 Las contraseñas deben hashearse antes de guardar (pendiente: bcrypt)
-- 🔑 Los tokens JWT deben tener expiración
-- 🛡️ Implementar validación de entrada robusta
+**Implementadas:**
+
+- ✅ **Contraseñas hasheadas** con bcrypt (10 salt rounds)
+- ✅ **JWT con expiración** (24h para access, 1h para reset)
+- ✅ **Rate limiting** en login (3-5 intentos/5min)
+- ✅ **Validación robusta** de inputs (email, password, age)
+- ✅ **CORS configurado** correctamente
+- ✅ **Cookies seguras** (httpOnly, secure en producción)
+- ✅ **Soft delete** (no eliminación física)
+- ✅ **Reset password con JTI** (previene reutilización de tokens)
+
+**Recomendaciones adicionales:**
+
+- 🔧 Agregar Helmet.js para headers de seguridad
+- 🔧 Implementar refresh tokens
+- 🔧 2FA (Two-Factor Authentication)
+- 🔧 Account lockout tras múltiples intentos fallidos
 
 ---
 
@@ -301,5 +551,74 @@ Si encuentras algún bug o tienes alguna pregunta, por favor abre un [issue](htt
 
 ---
 
+## 📊 Estado del Proyecto
+
+### ✅ Completado
+
+- [x] Sistema de autenticación completo
+- [x] Gestión de usuarios (CRUD)
+- [x] Recuperación de contraseña por email
+- [x] JWT authentication + refresh
+- [x] Rate limiting
+- [x] Error handling centralizado
+- [x] Logging de requests
+- [x] Soft delete
+- [x] Validación de inputs
+- [x] TypeScript setup completo
+- [x] Documentación (README + ARCHITECTURE)
+
+### 🚧 En Desarrollo
+
+- [ ] Integración con API de películas
+- [ ] Sistema de favoritos
+- [ ] Sistema de reviews
+- [ ] Paginación avanzada
+- [ ] Búsqueda y filtros
+
+### 📝 Roadmap Futuro
+
+- [ ] WebSockets para notificaciones en tiempo real
+- [ ] Sistema de recomendaciones
+- [ ] Upload de imágenes de perfil
+- [ ] 2FA (Two-Factor Authentication)
+- [ ] Refresh tokens
+- [ ] Tests unitarios y de integración
+- [ ] CI/CD pipeline
+- [ ] Docker containerization
+
+---
+
+## 🎯 Testing
+
+Para probar los endpoints, puedes usar:
+
+- **Postman:** Importa la collection desde la documentación
+- **Thunder Client:** Extension de VSCode
+- **curl:** Comandos desde terminal
+
+Ejemplo con curl:
+
+```bash
+# Registro
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","lastName":"User","age":25,"email":"test@test.com","password":"Test123!"}'
+
+# Login
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","password":"Test123!"}'
+
+# Get Profile (con token)
+curl -X GET http://localhost:5000/api/users/profile \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+---
+
 **Desarrollado con ❤️ y TypeScript**
+
+**Última actualización:** Octubre 2025  
+**Versión:** 1.5.0  
+**Estado:** Production Ready (Auth & User Management)
 
