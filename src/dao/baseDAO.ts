@@ -76,6 +76,7 @@ export class BaseDAO<Row, Insert, Update> {
     const updateData: any = payload;
     const { data, error } = await supabase
       .from(this.table)
+      // @ts-ignore 
       .update(updateData)
       .eq('id', id)
       .select('*')
@@ -83,6 +84,16 @@ export class BaseDAO<Row, Insert, Update> {
 
     if (error) throw new Error(`[${this.table}] updateById: ${error.message}`);
     return data as Row;
+  }
+
+  async softDeleteById(id: string | number) {
+    const { error } = await supabase
+      .from(this.table)
+      // @ts-ignore
+      .update({ isDeleted: true })
+      .eq('id', id);
+    if (error) throw new Error(`[${this.table}] softDeleteById: ${error.message}`);
+    return true;
   }
 
   // This is the deleteById method
