@@ -22,4 +22,7 @@ router.post("/forgot-password", authController.forgotPassword);
 // Reset password
 router.post("/reset-password", authController.resetPassword);
 
+// Verify authentication
+router.get("/verify-auth", authenticateToken, authController.verifyAuth);
+
 export default router;
