@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
-import { UserDAO, userDAO } from "../dao/userDAO";
+import { UserDAO, userDAO } from "../dao/userDAO.js";
 import bcrypt from "bcrypt";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import config from "../config/config";
-import { sendMail } from "../service/resendService";
+import config from "../config/config.js";
+import { sendMail } from "../service/resendService.js";
 
 interface RegisterRequest {
     name: string;

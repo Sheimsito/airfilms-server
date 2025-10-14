@@ -1,7 +1,7 @@
-import { BaseDAO } from './baseDAO';
-import { supabaseGeneric as supabase } from '../lib/supabaseClient';
+import { BaseDAO } from './baseDAO.js';
+import { supabaseGeneric as supabase } from '../lib/supabaseClient.js';
 import bcrypt from 'bcrypt';
-import type { UserRow, UserInsert, UserUpdate } from '../types/database';
+import type { UserRow, UserInsert, UserUpdate } from '../types/database.js';
 
 /**
  * User Data Access Object
