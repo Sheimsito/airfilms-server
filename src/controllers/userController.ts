@@ -1,6 +1,6 @@
-import { userDAO, UserDAO } from "../dao/userDAO";
+import { userDAO, UserDAO } from "../dao/userDAO.js";
 import { Request, Response } from "express";
-import config from "../config/config";
+import config from "../config/config.js";
 import bcrypt from "bcrypt";
 
 

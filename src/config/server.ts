@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import logger from "../middleware/logger";
-import config from "./config";
+import logger from "../middleware/logger.js";
+import config from "./config.js";
 
 const configureServer = (app: express.Application) => {
     const allowedOrigins: string[] = [

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import config from "../config/config";
+import config from "../config/config.js";
 
 
 // This is the type for the app error

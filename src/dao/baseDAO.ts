@@ -1,4 +1,4 @@
-import { supabaseGeneric as supabase } from '../lib/supabaseClient';
+import { supabaseGeneric as supabase } from '../lib/supabaseClient.js';
 
 // This is the type for the query filters
 export type QueryFilters<T> = Partial<Record<keyof T, T[keyof T]>>;

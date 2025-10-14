@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
-import config from "../config/config";
+import config from "../config/config.js";
 
 export interface AuthRequest extends Request {
   user?: {
