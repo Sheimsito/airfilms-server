@@ -1,10 +1,10 @@
 import express, { Request, Response } from "express";
-import indexRoutes from "./routes/index";
-import errorHandler from "./middleware/errorHandler";
-import notFound from "./middleware/notFound";
+import indexRoutes from "./routes/index.js";
+import errorHandler from "./middleware/errorHandler.js";
+import notFound from "./middleware/notFound.js";
 import cookieParser from "cookie-parser";
-import config from "./config/config";
-import configureServer from "./config/server";
+import config from "./config/config.js";
+import configureServer from "./config/server.js";
 
 // initialize the express app
 const app = express();

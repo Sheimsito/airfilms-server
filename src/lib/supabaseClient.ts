@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types/database';
-import config from '../config/config';
+import type { Database } from '../types/database.js';
+import config from '../config/config.js';
 
 const url: string = config.databaseUrl;
 const serviceRoleKey: string = config.serviceRoleKey;

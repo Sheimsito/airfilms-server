@@ -509,7 +509,6 @@ Para arquitectura detallada y patrones de diseño, consulta [ARCHITECTURE.md](./
 Este proyecto usa:
 - `"type": "module"` en `package.json` (ES Modules)
 - `moduleResolution: "Node"` en `tsconfig.json`
-- Imports SIN extensiones `.js` gracias a `tsx`
 
 ### Supabase
 
