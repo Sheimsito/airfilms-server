@@ -261,4 +261,33 @@ const resetPassword = async (req: Request<{}, {}, ResetPasswordRequest>, res: Re
       res.status(500).json({ success: false, message: "Inténtalo de nuevo más tarde." , err: err instanceof Error ? err.message : "Error interno del servidor"});
     }
   };
-export default { register, login, logout, forgotPassword, resetPassword };
+
+  /**
+ * Verifies if the user is authenticated.
+ *
+ * @function verifyAuth
+ * @param {Request} req Express request object (must include `req.user` from the `authenticateToken` middleware).
+ * @param {Response} res Express response object.
+ * @returns {void} Returns a JSON object with:
+ *
+ * - 200: `{ success: true, user: { id, email } }`
+ *   If the user is authenticated.
+ * - 401: Unauthorized (handled by `authenticateToken` middleware).
+ * - 500: `{ success: false, message: error.message }`
+ *   If an internal error occurs.
+ */
+const verifyAuth = async (req: Request, res: Response) => {
+    try {
+        // If we get here, the authenticateToken middleware has already verified that the token is valid
+        res.status(200).json({
+            success: true,
+            user: {
+                id: (req as Request & { user: { userId: string } }).user.userId
+            }
+        });
+    } catch (error: unknown) {
+        res.status(500).json({ success: false, message: error instanceof Error ? error.message : "Error interno del servidor"});
+    }
+};
+
+export default { register, login, logout, forgotPassword, resetPassword, verifyAuth };

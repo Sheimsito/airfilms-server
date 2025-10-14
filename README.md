@@ -20,7 +20,7 @@ Backend API para la plataforma AirFilms construido con Node.js, Express, TypeScr
 
 ## ✨ Características
 
-- 🔐 **Autenticación completa**: Registro, login, logout, recuperación de contraseña
+- 🔐 **Autenticación completa**: Registro, login, logout, recuperación de contraseña, verificación de sesión
 - 👤 **Gestión de usuarios**: Perfil, actualización, soft delete
 - 🗄️ **Integración con Supabase** (PostgreSQL)
 - 🏗️ **Arquitectura en capas** (DAO, Services, Controllers)
@@ -166,7 +166,7 @@ airfilms-server/
 │   │   ├── config.ts        # Variables de entorno centralizadas
 │   │   └── server.ts        # Configuración de Express (CORS, middlewares)
 │   ├── controllers/         # Controladores de rutas
-│   │   ├── authController.ts   # Autenticación y recuperación de contraseña
+│   │   ├── authController.ts   # Autenticación, recuperación de contraseña y verificación
 │   │   └── userController.ts   # Gestión de perfil de usuario
 │   ├── dao/                 # Data Access Objects
 │   │   ├── baseDAO.ts       # DAO genérico (CRUD + soft delete)
@@ -352,6 +352,33 @@ Restablece la contraseña con token recibido por email.
   "message": "Enlace inválido o ya utilizado."
 }
 ```
+
+---
+
+#### `GET /api/auth/verify-auth`
+
+Verifica si el usuario está autenticado (requiere autenticación).
+
+**Headers:** `Authorization: Bearer <token>` o Cookie
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "user": {
+    "id": "uuid"
+  }
+}
+```
+
+**Response (401 Unauthorized):**
+```json
+{
+  "message": "No autorizado."
+}
+```
+
+**Nota:** Este endpoint es útil para verificar si un token sigue siendo válido sin necesidad de hacer una petición completa al perfil.
 
 ---
 
