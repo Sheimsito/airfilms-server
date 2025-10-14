@@ -186,6 +186,32 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
        Body: { success: true, message: "Contraseña actualizada." }
 ```
 
+### Ejemplo 3: Verificación de Autenticación
+
+```
+1. CLIENT
+   └─> GET /api/auth/verify-auth
+       Headers: Authorization: Bearer <token> o Cookie: access_token
+          ↓
+2. MIDDLEWARE (authenticateToken)
+   ├─> Extrae token del header o cookie
+   ├─> Verifica firma del JWT (jwt.verify)
+   ├─> Verifica expiración
+   ├─> Inyecta user.userId en req.user
+   └─> Pasa al controlador
+          ↓
+3. CONTROLLER (authController.verifyAuth)
+   ├─> Lee req.user.userId (inyectado por middleware)
+   └─> Retorna información del usuario
+          ↓
+4. RESPONSE
+   └─> Status: 200 OK
+       Body: { success: true, user: { id: "uuid" } }
+
+// Si el token es inválido o expiró:
+MIDDLEWARE → 401 Unauthorized: { message: "No autorizado." }
+```
+
 
 
 ---
@@ -270,7 +296,7 @@ src/
 │   └── server.ts        # Configuración de Express (CORS, body parser, middlewares)
 │
 ├── controllers/         # 🎮 Controladores 
-│   ├── authController.ts   # Registro, login, logout, forgot/reset password
+│   ├── authController.ts   # Registro, login, logout, forgot/reset password, verify auth
 │   └── userController.ts   # Perfil de usuario, actualización, soft delete
 │
 ├── dao/                 # 🗄️ Data Access Objects
@@ -571,7 +597,7 @@ class CachedMoviesApiService extends MoviesApiService {
 
 | Componente         | Descripción                                    | Estado           |
 |------------        |------------------------------------------------|------------------|
-| **AuthController** | Registro, login, logout, forgot/reset password | ✅ Implementado |
+| **AuthController** | Registro, login, logout, forgot/reset password, verify auth | ✅ Implementado |
 | **UserController** | Perfil, actualización, soft delete             | ✅ Implementado |
 | **BaseDAO**        | CRUD genérico + soft delete                    | ✅ Implementado |
 | **UserDAO**        | Operaciones específicas de usuarios            | ✅ Implementado |
