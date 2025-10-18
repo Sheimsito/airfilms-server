@@ -195,10 +195,9 @@ const forgotPassword = async (req: Request<{}, {}, ForgotPasswordRequest>, res: 
       const resetLink: string = `${config.frontendUrl}/olvidar-pw2?token=${resetToken}`;
   
       // In development, send to verified Resend email (not production user emails)
-      const emailToSend: string = config.nodeEnv === 'development'
-          ? 'kealgri@gmail.com'
-          : email;
-  
+
+      const emailToSend: string = config.emailToSend; // Right now it is set to the email of the dev team, but in the future it will be set to the email of the user who forgot their password
+
       await sendMail({
           to: emailToSend,
           subject: "Restablecimiento de contraseña",

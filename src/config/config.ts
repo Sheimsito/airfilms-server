@@ -15,6 +15,7 @@ interface Config {
     jwtSecret: string;
     jwtResetPasswordSecret: string;
     resendApiKey: string;
+    emailToSend: string;
 }
 
 // This is the config object
@@ -29,6 +30,7 @@ const config: Config = {
     jwtSecret: process.env.JWT_SECRET || "your_jwt_secret",
     jwtResetPasswordSecret: process.env.JWT_RESET_PASSWORD_SECRET || "your_jwt_reset_password_secret",
     resendApiKey: process.env.RESEND_API_KEY || "",
+    emailToSend: process.env.EMAIL_TO_SEND || "",
 }
 
 export default config;
