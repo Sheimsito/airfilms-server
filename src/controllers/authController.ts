@@ -192,7 +192,7 @@ const forgotPassword = async (req: Request<{}, {}, ForgotPasswordRequest>, res: 
   
       await userDAO.updateResetPasswordJti(user.id, jwtid);
   
-      const resetLink: string = `${config.frontendUrl}/reset-password?token=${resetToken}`;
+      const resetLink: string = `${config.frontendUrl}/olvidar-pw2?token=${resetToken}`;
   
       // In development, send to verified Resend email (not production user emails)
       const emailToSend: string = config.nodeEnv === 'development'
