@@ -16,6 +16,9 @@ interface Config {
     jwtResetPasswordSecret: string;
     resendApiKey: string;
     emailToSend: string;
+    appName: string;
+    logoUrl: string;
+    supportEmail: string;
 }
 
 // This is the config object
@@ -31,6 +34,9 @@ const config: Config = {
     jwtResetPasswordSecret: process.env.JWT_RESET_PASSWORD_SECRET || "your_jwt_reset_password_secret",
     resendApiKey: process.env.RESEND_API_KEY || "",
     emailToSend: process.env.EMAIL_TO_SEND || "",
+    appName: process.env.APP_NAME || "Airfilms",
+    logoUrl: process.env.LOGO_URL || "https://air-films-fend.vercel.app/AirFilms.png",
+    supportEmail: process.env.SUPPORT_EMAIL || "support@airfilms.com",
 }
 
 export default config;

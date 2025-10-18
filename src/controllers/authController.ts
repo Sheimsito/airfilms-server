@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import config from "../config/config.js";
 import { sendMail } from "../service/resendService.js";
+import { generateEmailTemplate, type TemplateVariables } from "../service/emailTemplates.js";
 
 interface RegisterRequest {
     name: string;
@@ -195,18 +196,45 @@ const forgotPassword = async (req: Request<{}, {}, ForgotPasswordRequest>, res: 
       const resetLink: string = `${config.frontendUrl}/olvidar-pw2?token=${resetToken}`;
   
       // In development, send to verified Resend email (not production user emails)
-
       const emailToSend: string = config.emailToSend; // Right now it is set to the email of the dev team, but in the future it will be set to the email of the user who forgot their password
+
+      // Prepare template variables
+      const templateVariables: TemplateVariables = {
+        APP_NAME: config.appName,
+        LOGO_URL: config.logoUrl,
+        SUPPORT_EMAIL: config.supportEmail,
+        USER_NAME: user.name,
+        RESET_URL: resetLink,
+        EXPIRES_IN: "1 hora",
+        CURRENT_YEAR: new Date().getFullYear().toString()
+      };
+
+      // Generate HTML email using template
+      const htmlEmail = generateEmailTemplate('password-reset', templateVariables);
+      
+      // Generate plain text version
+      const textEmail = `Hola ${user.name},c
+
+        Recibimos una solicitud para restablecer la contraseña de tu cuenta en ${config.appName}.
+
+        Si solicitaste este cambio, haz clic en el siguiente enlace:
+        ${resetLink}
+
+        Este enlace expira en 1 hora y solo puede usarse una vez.
+
+        Si no solicitaste este cambio, ignora este email.
+
+        Si tienes problemas, contacta nuestro soporte en ${config.supportEmail}
+
+        ---
+        ${config.appName}
+        Este email fue generado automáticamente, por favor no responder.`;
 
       await sendMail({
           to: emailToSend,
-          subject: "Restablecimiento de contraseña",
-          text: `Haz clic en el siguiente enlace para restablecer tu contraseña: ${resetLink}\n\nSolicitado para: ${email}`,
-          html: `
-              <p>Haz clic en el siguiente enlace para restablecer tu contraseña:</p>
-              <a href="${resetLink}">${resetLink}</a>
-              <p><strong>Solicitado para:</strong> ${email}</p>
-          `,
+          subject: `Recuperar Contraseña - ${config.appName}`,
+          text: textEmail,
+          html: htmlEmail,
       });
   
       res.status(200).json({ success: true, message: "Se ha enviado un enlace de restablecimiento." });
@@ -254,7 +282,52 @@ const resetPassword = async (req: Request<{}, {}, ResetPasswordRequest>, res: Re
       // Invalidate the token and update the password
       await userDAO.updateResetPasswordJti(user.id, "");
       await userDAO.updateById(user.id, { password: await bcrypt.hash(newPassword, 10) });
-  
+
+      // Send password changed notification email
+      try {
+        const emailToSend: string = config.emailToSend; // In development, send to dev team email
+        
+        const templateVariables: TemplateVariables = {
+          APP_NAME: config.appName,
+          LOGO_URL: config.logoUrl,
+          SUPPORT_EMAIL: config.supportEmail,
+          USER_NAME: user.name,
+          CHANGED_DATE: new Date().toLocaleDateString('es-ES'),
+          CHANGED_TIME: new Date().toLocaleTimeString('es-ES'),
+          IP_ADDRESS: req.ip || req.connection.remoteAddress || 'Desconocida',
+          CURRENT_YEAR: new Date().getFullYear().toString()
+        };
+
+        const htmlEmail = generateEmailTemplate('password-changed', templateVariables);
+        
+        const textEmail = `Hola ${user.name},
+
+¡Contraseña actualizada con éxito en ${config.appName}!
+
+Tu contraseña ha sido cambiada exitosamente.
+
+Detalles del cambio:
+- Fecha: ${templateVariables.CHANGED_DATE}
+- Hora: ${templateVariables.CHANGED_TIME}
+- IP aproximada: ${templateVariables.IP_ADDRESS}
+
+¿No fuiste tú? Si no realizaste este cambio, contacta inmediatamente nuestro soporte en ${config.supportEmail}
+
+---
+${config.appName}
+Mantén tu cuenta segura - Tu seguridad es nuestra prioridad`;
+
+        await sendMail({
+          to: emailToSend,
+          subject: `Contraseña Actualizada - ${config.appName}`,
+          text: textEmail,
+          html: htmlEmail,
+        });
+      } catch (emailError) {
+        console.error('Error enviando email de notificación:', emailError);
+        // Don't fail the password reset if email fails
+      }
+
       res.status(200).json({ success: true, message: "Contraseña actualizada." });
     } catch (err: unknown) {
       res.status(500).json({ success: false, message: "Inténtalo de nuevo más tarde." , err: err instanceof Error ? err.message : "Error interno del servidor"});
@@ -289,4 +362,64 @@ const verifyAuth = async (req: Request, res: Response) => {
     }
 };
 
-export default { register, login, logout, forgotPassword, resetPassword, verifyAuth };
+/**
+ * Sends an account blocked notification email
+ * @param user - User object
+ * @param blockDuration - Duration of the block in minutes
+ * @param ipAddress - IP address that triggered the block
+ */
+const sendAccountBlockedEmail = async (user: any, blockDuration: number, ipAddress: string) => {
+  try {
+    const emailToSend: string = config.emailToSend;
+    const unblockTime = new Date(Date.now() + blockDuration * 60 * 1000).toLocaleString('es-ES');
+    
+    const templateVariables: TemplateVariables = {
+      APP_NAME: config.appName,
+      LOGO_URL: config.logoUrl,
+      SUPPORT_EMAIL: config.supportEmail,
+      USER_NAME: user.name,
+      BLOCK_DURATION: blockDuration.toString(),
+      UNBLOCK_TIME: unblockTime,
+      IP_ADDRESS: ipAddress,
+      CURRENT_YEAR: new Date().getFullYear().toString()
+    };
+
+    const htmlEmail = generateEmailTemplate('account-blocked', templateVariables);
+    
+    const textEmail = `Hola ${user.name},
+
+🔒 Tu cuenta de ${config.appName} ha sido temporalmente bloqueada
+
+Debido a múltiples intentos de login fallidos, tu cuenta ha sido bloqueada por seguridad.
+
+Detalles del bloqueo:
+- Tiempo restante: ${blockDuration} minutos
+- Acceso restaurado: ${unblockTime}
+- IP detectada: ${ipAddress}
+
+Si no intentaste acceder a tu cuenta, es posible que alguien esté tratando de hacerlo sin autorización.
+
+¿Qué puedes hacer?
+- Esperar ${blockDuration} minutos antes de intentar nuevamente
+- Usar la opción "Olvidé mi contraseña" si no recuerdas tu clave
+- Contactar soporte si crees que esto es un error
+- Revisar la seguridad de tu contraseña
+
+Si necesitas ayuda, contacta nuestro soporte en ${config.supportEmail}
+
+---
+${config.appName}
+Tu seguridad es nuestra prioridad - Equipo de Seguridad`;
+
+    await sendMail({
+      to: emailToSend,
+      subject: `Alerta de Seguridad - ${config.appName}`,
+      text: textEmail,
+      html: htmlEmail,
+    });
+  } catch (error) {
+    console.error('Error enviando email de cuenta bloqueada:', error);
+  }
+};
+
+export default { register, login, logout, forgotPassword, resetPassword, verifyAuth, sendAccountBlockedEmail };
