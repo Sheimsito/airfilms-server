@@ -7,6 +7,7 @@ const router = Router();
 
 // Movie Controller Routes
 router.get("/popular", movieController.getPopularMovies);
+router.get("/genre", movieController.searchGenreMovies);
 router.get("/details", movieController.getMovieDetails);
 router.get("/search", movieController.searchMovies);
 

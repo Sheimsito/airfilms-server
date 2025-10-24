@@ -88,7 +88,8 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
 **Componentes:**
 - **External Services:** Integraciones con APIs y servicios de terceros
   - **Email Service (Resend):** Envío de emails transaccionales (recuperación de contraseña)
-  - **Movies API Service:** Consumo de APIs de películas (TMDB, OMDB, etc.) para obtener información de contenido multimedia NOTA: En investigación
+  - **TMDB Service:** Consumo de The Movie Database API para obtener información de películas
+  - **Pexels Service:** Consumo de Pexels API para obtener videos relacionados con géneros de películas
 
 **Ubicación:** `src/service/`
 ```
@@ -101,6 +102,8 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
 - **DAOs (Data Access Objects):** Encapsulan consultas a la base de datos
 - **BaseDAO:** Clase genérica con operaciones CRUD comunes
 - **Specific DAOs:** Extienden BaseDAO con operaciones específicas
+  - **UserDAO:** Operaciones específicas de usuarios (findByEmail, updateResetPasswordJti)
+  - **FavoritesDAO:** Operaciones específicas de favoritos (findFavorites, deleteByComposite)
 
 **Ubicación:** `src/dao/`
 
@@ -212,6 +215,188 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
 MIDDLEWARE → 401 Unauthorized: { message: "No autorizado." }
 ```
 
+### Ejemplo 4: Obtener Películas Populares
+
+```
+1. CLIENT
+   └─> GET /api/movies/popular
+       Query: { ?page=1 }
+          ↓
+2. CONTROLLER (movieController.getPopularMovies)
+   ├─> Valida parámetro page (opcional, por defecto 1)
+   ├─> Llama a tmbdService.getPopularMoviesFromTMDB(page)
+          ↓
+3. EXTERNAL SERVICE (tmbdService)
+   ├─> Construye URL: https://api.themoviedb.org/3/movie/popular?page=1&language=es-MX
+   ├─> Headers: Authorization: Bearer ${TMDB_API_KEY}
+   ├─> Fetch a TMDB API
+   └─> Retorna datos de películas populares
+          ↓
+4. CONTROLLER (procesamiento de datos)
+   ├─> Mapea resultados de TMDB
+   ├─> Construye URLs de posters: https://image.tmdb.org/t/p/w500${poster_path}
+   └─> Retorna formato estandarizado
+          ↓
+5. RESPONSE
+   └─> Status: 200 OK
+       Body: {
+         "page": 1,
+         "total_pages": 500,
+         "results": [
+           {
+             "id": 550,
+             "title": "Fight Club",
+             "releaseDate": "1999-10-15",
+             "poster": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+           }
+         ]
+       }
+```
+
+### Ejemplo 5: Obtener Detalles de Película
+
+```
+1. CLIENT
+   └─> GET /api/movies/details
+       Query: { ?id=550 } // Movie ID
+          ↓
+2. CONTROLLER (movieController.getMovieDetails)
+   ├─> Valida movieId (debe ser número válido)
+   ├─> Llama a tmbdService.getMovieDetailsFromTMDB(movieId)
+          ↓
+3. EXTERNAL SERVICE (tmbdService)
+   ├─> Construye URL: https://api.themoviedb.org/3/movie/550?language=es-MX
+   ├─> Fetch a TMDB API
+   └─> Retorna detalles completos de la película
+          ↓
+4. CONTROLLER (procesamiento adicional)
+   ├─> Extrae primer género: tmdb.genres[0].name
+   ├─> Llama a pexelsService.getSearchVideo(genre)
+          ↓
+5. EXTERNAL SERVICE (pexelsService)
+   ├─> Construye URL: https://api.pexels.com/videos/search?query=${genre}&per_page=1
+   ├─> Headers: Authorization: ${PEXELS_API_KEY}
+   ├─> Fetch a Pexels API
+   └─> Retorna video relacionado con el género
+          ↓
+6. CONTROLLER (formateo final)
+   ├─> Combina datos de TMDB y Pexels
+   ├─> Construye URLs de imágenes
+   └─> Retorna objeto unificado
+          ↓
+7. RESPONSE
+   └─> Status: 200 OK
+       Body: {
+         "id": 550,
+         "title": "Fight Club",
+         "poster": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+         "genres": ["Drama"],
+         "overview": "A ticking-time-bomb insomniac...",
+         "releaseDate": "1999-10-15",
+         "runtime": 139,
+         "original_language": "EN",
+         "status": "Released",
+         "videoId": "12345",
+         "videoThumbnail": "https://videos.pexels.com/video-files/12345/thumbnail.jpg"
+       }
+```
+
+### Ejemplo 6: Agregar a Favoritos
+
+```
+1. CLIENT
+   └─> POST /api/movies/add-favorite
+       Headers: Authorization: Bearer <token>
+       Body: { "movieId": 550, "movieName": "Fight Club", "movieURL": "..." }
+          ↓
+2. MIDDLEWARE (authenticateToken)
+   ├─> Verifica JWT token
+   ├─> Extrae userId del token
+   └─> Inyecta req.user = { userId: "uuid" }
+          ↓
+3. CONTROLLER (favoritesController.insertFavorite)
+   ├─> Extrae datos del body: movieId, movieName, movieURL
+   ├─> Extrae userId de req.user (inyectado por middleware)
+   ├─> Llama a favoritesDAO.create(favoriteData)
+          ↓
+4. DAO (favoritesDAO.create)
+   ├─> Extiende BaseDAO.create()
+   ├─> Ejecuta: supabase.from('moviesFav').insert([payload]).select('*').single()
+   └─> Retorna favorito creado
+          ↓
+5. DATABASE (Supabase)
+   ├─> Valida constraints (unique composite key: userId + movieId)
+   ├─> Inserta registro con timestamps automáticos
+   └─> Retorna datos insertados
+          ↓
+6. RESPONSE
+   └─> Status: 201 Created
+       Body: {
+         "success": true,
+         "favorite": {
+           "userId": "uuid",
+           "movieId": 550,
+           "movieName": "Fight Club",
+           "posterURL": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+           "createdAt": "2025-01-13T...",
+           "updatedAt": "2025-01-13T...",
+           "isDeleted": false
+         }
+       }
+```
+
+### Ejemplo 7: Obtener Favoritos del Usuario
+
+```
+1. CLIENT
+   └─> GET /api/movies/get-favorites
+       Headers: Authorization: Bearer <token>
+          ↓
+2. MIDDLEWARE (authenticateToken)
+   ├─> Verifica JWT token
+   ├─> Extrae userId del token
+   └─> Inyecta req.user = { userId: "uuid" }
+          ↓
+3. CONTROLLER (favoritesController.findFavorites)
+   ├─> Extrae userId de req.user
+   ├─> Llama a favoritesDAO.findFavorites(userId)
+          ↓
+4. DAO (favoritesDAO.findFavorites)
+   ├─> Ejecuta: supabase.from('moviesFav').select('*').eq('userId', userId)
+   └─> Retorna array de favoritos del usuario
+          ↓
+5. DATABASE (Supabase)
+   ├─> Ejecuta query con filtro por userId
+   ├─> Retorna todos los favoritos del usuario
+   └─> Incluye timestamps y metadatos
+          ↓
+6. CONTROLLER (validación de resultados)
+   ├─> Verifica si hay favoritos
+   ├─> Si no hay: retorna 404
+   ├─> Si hay: retorna array de favoritos
+          ↓
+7. RESPONSE
+   └─> Status: 200 OK
+       Body: {
+         "success": true,
+         "favorites": [
+           {
+             "userId": "uuid",
+             "movieId": 550,
+             "movieName": "Fight Club",
+             "posterURL": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+             "createdAt": "2025-01-13T...",
+             "updatedAt": "2025-01-13T...",
+             "isDeleted": false
+           }
+         ]
+       }
+
+// Si no hay favoritos:
+Status: 404 Not Found
+Body: { "success": false, "message": "No se encontraron favoritos." }
+```
+
 
 
 ---
@@ -297,11 +482,14 @@ src/
 │
 ├── controllers/         # 🎮 Controladores 
 │   ├── authController.ts   # Registro, login, logout, forgot/reset password, verify auth
-│   └── userController.ts   # Perfil de usuario, actualización, soft delete
+│   ├── userController.ts   # Perfil de usuario, actualización, soft delete
+│   ├── movieController.ts  # Gestión de películas (búsqueda, detalles, populares)
+│   └── favoritesController.ts # Gestión de películas favoritas
 │
 ├── dao/                 # 🗄️ Data Access Objects
 │   ├── baseDAO.ts       # DAO genérico (CRUD + soft delete)
-│   └── userDAO.ts       # DAO específico de usuarios
+│   ├── userDAO.ts       # DAO específico de usuarios
+│   └── favoritesDAO.ts  # DAO específico de favoritos
 │
 ├── lib/                 # 📚 Librerías externas
 │   └── supabaseClient.ts # Cliente de Supabase (tipado y genérico)
@@ -315,10 +503,14 @@ src/
 ├── routes/              # 🛣️ Definición de rutas
 │   ├── index.ts         # Router principal que agrupa todas las rutas
 │   ├── authRoutes.ts    # Rutas de autenticación (públicas)
-│   └── userRoutes.ts    # Rutas de usuario (protegidas)
+│   ├── userRoutes.ts    # Rutas de usuario (protegidas)
+│   └── movieRoutes.ts   # Rutas de películas y favoritos ( la favoritos está protegida )
 │
 ├── service/             # 🌐 Servicios externos e integraciones
-│   └── resendService.ts # Servicio de emails (Resend API)
+│   ├── resendService.ts # Servicio de emails (Resend API)
+│   ├── tmbdService.ts   # Integración con TMDB API
+│   ├── pexelsService.ts # Integración con Pexels API
+│   └── emailTemplates.ts # Plantillas de emails
 │
 ├── types/               # 🏷️ Tipos TypeScript compartidos
 │   ├── database.ts      # Tipos de base de datos (Supabase) - Single Source of Truth
@@ -385,6 +577,23 @@ export type UserUpdate = Database['public']['Tables']['users']['Update'];
 | createdAt          | TIMESTAMP   | Fecha de creación                |
 | updatedAt          | TIMESTAMP   | Fecha de última actualización    |
 
+#### Tabla: `moviesFav`
+
+| Columna            | Tipo        | Descripción                      |
+|--------------------|-------------|----------------------------------|
+| userId             | UUID        | Foreign Key → users.id           |
+| movieId            | INTEGER     | ID de película de TMDB           |
+| movieName          | VARCHAR     | Nombre de la película            |
+| posterURL          | VARCHAR     | URL del poster de la película    |
+| isDeleted          | BOOLEAN     | Soft delete flag                 |
+| createdAt          | TIMESTAMP   | Fecha de creación                |
+| updatedAt          | TIMESTAMP   | Fecha de última actualización    |
+
+**Constraints:**
+- Primary Key compuesta: `(userId, movieId)`
+- Foreign Key: `userId` → `users.id`
+- Unique constraint: No puede haber duplicados de la misma película por usuario
+
 ### Conexión
 
 ```typescript
@@ -431,13 +640,14 @@ export const supabaseGeneric = createClient(url, key);
 
 **Ejemplos de servicios:**
 - **Email Service (Resend):** Envío de emails transaccionales
-- **Movies API Service (TMDB):** Obtención de información de películas
-- **Storage Service (Supabase Storage):** Gestión de archivos
+- **TMDB Service:** Obtención de información de películas (populares, detalles, búsqueda)
+- **Pexels Service:** Obtención de videos relacionados con géneros de películas ( Enfoque Académico )
 
 **Ventajas:**
 - Un solo lugar para cambiar la API de películas (de TMDB a OMDB)
 - Fácil mockear en tests
 - Rate limiting y retry logic centralizados
+- Separación clara entre diferentes proveedores de contenido
 
 ### 4. **tsx en lugar de ts-node**
 
@@ -599,17 +809,22 @@ class CachedMoviesApiService extends MoviesApiService {
 |------------        |------------------------------------------------|------------------|
 | **AuthController** | Registro, login, logout, forgot/reset password, verify auth | ✅ Implementado |
 | **UserController** | Perfil, actualización, soft delete             | ✅ Implementado |
+| **MovieController** | Búsqueda, detalles, películas populares, videos | ✅ Implementado |
+| **FavoritesController** | Agregar, eliminar, listar favoritos          | ✅ Implementado |
 | **BaseDAO**        | CRUD genérico + soft delete                    | ✅ Implementado |
 | **UserDAO**        | Operaciones específicas de usuarios            | ✅ Implementado |
+| **FavoritesDAO**   | Operaciones específicas de favoritos           | ✅ Implementado |
 | **Auth Middleware** | JWT verification + rate limiting              | ✅ Implementado |
 | **Error Handler**  | Manejo de errores Supabase/PostgreSQL          | ✅ Implementado |
 | **Logger Middleware** | Logging de requests/responses               | ✅ Implementado |
 | **NotFound Middleware** | Manejo de rutas 404                       | ✅ Implementado |
 | **Resend Service**  | Envío de emails transaccionales               | ✅ Implementado |
+| **TMDB Service**   | Integración con The Movie Database API        | ✅ Implementado |
+| **Pexels Service** | Integración con Pexels API para videos        | ✅ Implementado |
 
 ---
 
-**Última actualización:** Octubre 2025  
-**Versión de arquitectura:** 1.5 
-**Estado:** Producción Ready (Backend Auth & User Management)
+**Última actualización:** Enero 2025  
+**Versión de arquitectura:** 2.0 
+**Estado:** Producción Ready (Backend Auth, User Management & Movies)
 
