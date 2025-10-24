@@ -31,6 +31,7 @@
     "resend": "^6.1.2"
   },
   "devDependencies": {
+    "@express-rate-limit/tsconfig": "^1.0.2",
     "eslint": "^9.37.0",
     "install": "^0.13.0",
     "npm": "^11.6.2",
