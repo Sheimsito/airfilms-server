@@ -536,11 +536,11 @@ Obtiene películas populares con paginación.
 
 Obtiene detalles completos de una película específica.
 
-**Request Body:**
+**Query Parameters:**
 ```json
-{
-  "id": "550"
-}
+
+  ?id=550
+
 ```
 
 **Response (200 OK):**
@@ -566,11 +566,10 @@ Obtiene detalles completos de una película específica.
 
 Busca películas por nombre.
 
-**Request Body:**
-```json
-{
-  "name": "fight club"
-}
+**Query Parameters:**
+```
+  ?name=fight club
+
 ```
 
 **Response (200 OK):**
@@ -594,11 +593,11 @@ Busca películas por nombre.
 
 Obtiene información de video por ID.
 
-**Request Body:**
-```json
-{
-  "id": "12345"
-}
+**Query Parameters:**
+```
+
+  ?id=12345
+
 ```
 
 **Response (200 OK):**
