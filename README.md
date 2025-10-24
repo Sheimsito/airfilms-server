@@ -22,6 +22,9 @@ Backend API para la plataforma AirFilms construido con Node.js, Express, TypeScr
 
 - 🔐 **Autenticación completa**: Registro, login, logout, recuperación de contraseña, verificación de sesión
 - 👤 **Gestión de usuarios**: Perfil, actualización, soft delete
+- 🎬 **Sistema de películas**: Búsqueda, detalles, películas populares
+- ❤️ **Sistema de favoritos**: Agregar, eliminar y listar películas favoritas
+- 🎥 **Integración con APIs externas**: TMDB para películas, Pexels para videos
 - 🗄️ **Integración con Supabase** (PostgreSQL)
 - 🏗️ **Arquitectura en capas** (DAO, Services, Controllers)
 - 📝 **TypeScript** para type-safety completa
@@ -46,6 +49,8 @@ Backend API para la plataforma AirFilms construido con Node.js, Express, TypeScr
 - **Framework:** Express v5
 - **Lenguaje:** TypeScript v5
 - **Base de Datos:** Supabase (PostgreSQL)
+- **APIs Externas:** TMDB API, Pexels API
+- **Email Service:** Resend API
 - **Dev Tools:** tsx, ESLint, Prettier
 - **ORM/Query Builder:** @supabase/supabase-js
 
@@ -107,6 +112,10 @@ JWT_RESET_PASSWORD_SECRET=tu_jwt_reset_password_secret
 # Email Service (Resend)
 RESEND_API_KEY=tu_resend_api_key
 
+# External APIs
+TMDB_API_KEY=tu_tmdb_api_key
+PEXELS_API_KEY=tu_pexels_api_key
+
 # API Configuration
 API_VERSION=v1
 API_PREFIX=/api
@@ -120,6 +129,18 @@ API_PREFIX=/api
 4. Copia:
    - **Project URL** → `SUPABASE_URL`
    - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (¡solo para backend!)
+
+### Obtener las credenciales de APIs externas
+
+#### TMDB API
+1. Ve a [TMDB API](https://www.themoviedb.org/settings/api)
+2. Crea una cuenta y solicita una API key
+3. Copia la API key → `TMDB_API_KEY`
+
+#### Pexels API
+1. Ve a [Pexels API](https://www.pexels.com/api/)
+2. Crea una cuenta y obtén tu API key
+3. Copia la API key → `PEXELS_API_KEY`
 
 ---
 
@@ -167,10 +188,13 @@ airfilms-server/
 │   │   └── server.ts        # Configuración de Express (CORS, middlewares)
 │   ├── controllers/         # Controladores de rutas
 │   │   ├── authController.ts   # Autenticación, recuperación de contraseña y verificación
-│   │   └── userController.ts   # Gestión de perfil de usuario
+│   │   ├── userController.ts   # Gestión de perfil de usuario
+│   │   ├── movieController.ts  # Gestión de películas y búsquedas
+│   │   └── favoritesController.ts # Gestión de películas favoritas
 │   ├── dao/                 # Data Access Objects
 │   │   ├── baseDAO.ts       # DAO genérico (CRUD + soft delete)
-│   │   └── userDAO.ts       # DAO específico de usuarios
+│   │   ├── userDAO.ts       # DAO específico de usuarios
+│   │   └── favoritesDAO.ts  # DAO específico de favoritos
 │   ├── lib/                 # Librerías y clientes externos
 │   │   └── supabaseClient.ts
 │   ├── middleware/          # Middlewares de Express
@@ -181,9 +205,13 @@ airfilms-server/
 │   ├── routes/              # Definición de rutas
 │   │   ├── index.ts         # Router principal
 │   │   ├── authRoutes.ts    # Rutas de autenticación (públicas)
-│   │   └── userRoutes.ts    # Rutas de usuario (protegidas)
+│   │   ├── userRoutes.ts    # Rutas de usuario (protegidas)
+│   │   └── movieRoutes.ts   # Rutas de películas y favoritos
 │   ├── service/             # Integraciones con servicios externos
-│   │   └── resendService.ts # Envío de emails transaccionales
+│   │   ├── resendService.ts # Envío de emails transaccionales
+│   │   ├── tmbdService.ts   # Integración con TMDB API
+│   │   ├── pexelsService.ts # Integración con Pexels API
+│   │   └── emailTemplates.ts # Plantillas de emails
 │   ├── types/               # Tipos TypeScript (Single Source of Truth)
 │   │   ├── database.ts      # Tipos de base de datos Supabase
 │   │   └── express.d.ts     # Extensiones de tipos Express
@@ -471,6 +499,219 @@ Elimina la cuenta del usuario (soft delete).
 
 ---
 
+### 🎬 Películas (Públicas)
+
+Todas las rutas bajo `/api/movies` son públicas (excepto favoritos).
+
+---
+
+#### `GET /api/movies/popular`
+
+Obtiene películas populares con paginación.
+
+**Query Parameters:**
+```
+?page=1 (opcional, por defecto 1)
+```
+
+**Response (200 OK):**
+```json
+{
+  "page": 1,
+  "total_pages": 500,
+  "results": [
+    {
+      "id": 550,
+      "title": "Fight Club",
+      "releaseDate": "1999-10-15",
+      "poster": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/movies/details`
+
+Obtiene detalles completos de una película específica.
+
+**Request Body:**
+```json
+{
+  "id": "550"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 550,
+  "title": "Fight Club",
+  "poster": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+  "genres": ["Drama"],
+  "overview": "A ticking-time-bomb insomniac and a slippery soap salesman...",
+  "releaseDate": "1999-10-15",
+  "runtime": 139,
+  "original_language": "EN",
+  "status": "Released",
+  "videoId": "12345",
+  "videoThumbnail": "https://videos.pexels.com/video-files/12345/thumbnail.jpg"
+}
+```
+
+---
+
+#### `GET /api/movies/search`
+
+Busca películas por nombre.
+
+**Request Body:**
+```json
+{
+  "name": "fight club"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "page": 1,
+  "total_pages": 1,
+  "results": [
+    {
+      "id": 550,
+      "title": "Fight Club",
+      "poster": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/movies/get-video`
+
+Obtiene información de video por ID.
+
+**Request Body:**
+```json
+{
+  "id": "12345"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 12345,
+  "url": "https://videos.pexels.com/video-files/12345/video.mp4",
+  "image": "https://videos.pexels.com/video-files/12345/thumbnail.jpg",
+  "duration": 30,
+  "user": {
+    "id": 123,
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+### ❤️ Favoritos (Protegidas)
+
+Todas las rutas bajo `/api/movies` para favoritos requieren autenticación.
+
+**Headers requeridos:**
+```
+Authorization: Bearer <token>
+```
+
+---
+
+#### `POST /api/movies/add-favorite`
+
+Agrega una película a favoritos.
+
+**Request Body:**
+```json
+{
+  "movieId": 550,
+  "movieName": "Fight Club",
+  "movieURL": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "favorite": {
+    "userId": "uuid",
+    "movieId": 550,
+    "movieName": "Fight Club",
+    "posterURL": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+    "createdAt": "2025-01-13T...",
+    "updatedAt": "2025-01-13T...",
+    "isDeleted": false
+  }
+}
+```
+
+---
+
+#### `DELETE /api/movies/delete-favorite`
+
+Elimina una película de favoritos.
+
+**Request Body:**
+```json
+{
+  "movieId": 550
+}
+```
+
+**Response (201 OK):**
+```json
+{
+  "success": true,
+  "favorite": true
+}
+```
+
+---
+
+#### `GET /api/movies/get-favorites`
+
+Obtiene todas las películas favoritas del usuario.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "favorites": [
+    {
+      "userId": "uuid",
+      "movieId": 550,
+      "movieName": "Fight Club",
+      "posterURL": "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+      "createdAt": "2025-01-13T...",
+      "updatedAt": "2025-01-13T...",
+      "isDeleted": false
+    }
+  ]
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "success": false,
+  "message": "No se encontraron favoritos."
+}
+```
+
+---
+
 ## 📜 Scripts Disponibles
 
 | Script         | Descripción                                    |
@@ -592,15 +833,20 @@ Si encuentras algún bug o tienes alguna pregunta, por favor abre un [issue](htt
 - [x] Soft delete
 - [x] Validación de inputs
 - [x] TypeScript setup completo
+- [x] Integración con TMDB API
+- [x] Integración con Pexels API
+- [x] Sistema de películas (búsqueda, detalles, populares)
+- [x] Sistema de favoritos (agregar, eliminar, listar)
 - [x] Documentación (README + ARCHITECTURE)
 
 ### 🚧 En Desarrollo
 
-- [ ] Integración con API de películas
-- [ ] Sistema de favoritos
+- [ ] Refactorización de endpoints GET (usar query params en lugar de body)
+- [ ] Validación mejorada con Joi/Zod
+- [ ] Cache para APIs externas
 - [ ] Sistema de reviews
 - [ ] Paginación avanzada
-- [ ] Búsqueda y filtros
+- [ ] Búsqueda y filtros avanzados
 
 ### 📝 Roadmap Futuro
 
@@ -645,7 +891,7 @@ curl -X GET http://localhost:5000/api/users/profile \
 
 **Desarrollado con ❤️ y TypeScript**
 
-**Última actualización:** Octubre 2025  
+**Última actualización:** Enero 2025  
 **Versión:** 1.5.0  
-**Estado:** Production Ready (Auth & User Management)
+**Estado:** Production Ready (Auth, User Management & Movies)
 

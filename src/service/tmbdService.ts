@@ -79,3 +79,27 @@ export async function searchMoviesFromTMDB(name: string) {
   const data = await res.json();
   return data; 
 }
+
+/**
+ * @async
+ * @function searchGenreMoviesFromTMDB
+ * @returns {Promise<Object>} Search genre movies data using Genre ID from TMDB API.
+ * @throws {Error} Throws an error if the HTTP response is not OK.
+ */
+
+export async function searchGenreMoviesFromTMDB(genre: string) {
+  const url = `${BASE_URL}/discover/movie?with_genres=${genre}&language=es-MX`;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Authorization': `Bearer ${API_KEY}`
+  };
+  const res = await fetch(url, { headers });
+
+  if (!res.ok) {
+    throw new Error(`TMDB Error: ${res.status} ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  return data; 
+}

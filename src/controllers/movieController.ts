@@ -1,4 +1,4 @@
-import { getMovieDetailsFromTMDB, getPopularMoviesFromTMDB, searchMoviesFromTMDB } from "../service/tmbdService.js";
+import { getMovieDetailsFromTMDB, getPopularMoviesFromTMDB, searchGenreMoviesFromTMDB, searchMoviesFromTMDB } from "../service/tmbdService.js";
 import { getSearchVideo, getVideoById } from "../service/pexelsService.js";
 import { Request, Response, NextFunction } from "express";
 
@@ -118,6 +118,45 @@ export async function searchMovies(req: Request<{}, { name: string }>, res: Resp
 }
 
 /**
+ * @description Search movies using the genre ID
+ * 
+ * @async 
+ * @function searchGenreMovies
+ * @param req: Request<{}, { genre: string }>
+ * @param res: Response
+ * @param next: NextFunction
+ * @returns Promise<void>
+ */
+export async function searchGenreMovies(req: Request<{}, { genre: string }>, res: Response, next: NextFunction) {
+  try {
+    const genre: string = String(req.query.genre);
+    if (genre === undefined) {
+      return res.status(400).json({ error: "El parámetro 'genre' es obligatorio" });
+    }
+    const tmdb = await searchGenreMoviesFromTMDB(genre);
+    const movies = tmdb.results.map((m: any) => ({
+      id: m.id,
+      title: m.title,
+      poster: m.poster_path
+        ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
+        : null,
+    }));
+    
+    if (movies.length === 0) {
+      return res.status(404).json({ error: "No se encontraron películas para el género especificado" });
+    }
+
+    return res.json({
+      page: tmdb.page,
+      total_pages: tmdb.total_pages,
+      results: movies
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * @description IMPORTANT: Search video using any genre on the movie to simulate the videos
  * 
  * @async 
@@ -144,4 +183,4 @@ export async function searchVideoById(req: Request<{}, { id: string }>, res: Res
   }
 }
 
-export default { getPopularMovies, getMovieDetails, searchMovies, searchVideoById };
+export default { getPopularMovies, getMovieDetails, searchMovies, searchGenreMovies, searchVideoById };
