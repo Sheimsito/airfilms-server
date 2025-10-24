@@ -1,7 +1,8 @@
 import { Router } from "express";
-import movieController from "../controllers/movieController";
-import favoritesController from "../controllers/favoritesController";
-import { authenticateToken } from "../middleware/auth";
+import movieController from "../controllers/movieController.js";
+import favoritesController from "../controllers/favoritesController.js";
+import { authenticateToken } from "../middleware/auth.js";
+
 const router = Router();
 
 // Movie Controller Routes

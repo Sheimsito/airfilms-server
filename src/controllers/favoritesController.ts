@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import config from "../config/config";      
-import { favoritesDAO } from "../dao/favoritesDAO";
+import config from "../config/config.js";      
+import { favoritesDAO } from "../dao/favoritesDAO.js";
 
 /** 
  * @description Find all favorites movies of a user

@@ -1,5 +1,5 @@
-import { getMovieDetailsFromTMDB, getPopularMoviesFromTMDB, searchMoviesFromTMDB } from "../service/tmbdService";
-import { getSearchVideo, getVideoById } from "../service/pexelsService";
+import { getMovieDetailsFromTMDB, getPopularMoviesFromTMDB, searchMoviesFromTMDB } from "../service/tmbdService.js";
+import { getSearchVideo, getVideoById } from "../service/pexelsService.js";
 import { Request, Response, NextFunction } from "express";
 
 interface GetPopularMoviesParams {
