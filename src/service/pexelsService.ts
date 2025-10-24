@@ -45,6 +45,5 @@ export async function getVideoById(id: string): Promise<any> {
     );
 
     const data = await response.json();
-    const videoUrl = data;
-    return videoUrl;
+    return data;
 }

@@ -1,4 +1,4 @@
-import { getMovieDetailsFromTMDB, getPopularMoviesFromTMDB, searchMoviesFromTMDB } from "../service/tmbdService.js";
+import { getMovieDetailsFromTMDB, getPopularMoviesFromTMDB, searchGenreMoviesFromTMDB, searchMoviesFromTMDB } from "../service/tmbdService.js";
 import { getSearchVideo, getVideoById } from "../service/pexelsService.js";
 import { Request, Response, NextFunction } from "express";
 
@@ -19,7 +19,7 @@ interface GetPopularMoviesParams {
 export async function getPopularMovies(req: Request<{} , GetPopularMoviesParams>, res: Response,next: NextFunction) {
   try {
     const page = Number(req.query.page) || 1;
-    if (!Number.isFinite(page) || page < 1) {
+    if (page === undefined || !Number.isFinite(page) || page < 1) {
         return res.status(400).json({ error: "Invalid 'page' query parameter" });
     }
     const tmdb = await getPopularMoviesFromTMDB(page); 
@@ -55,7 +55,7 @@ export async function getPopularMovies(req: Request<{} , GetPopularMoviesParams>
 export async function getMovieDetails(req: Request<{ id: string }>, res: Response, next: NextFunction) {
   try {
     const movieId = Number(req.query.id);
-    if (!Number.isFinite(movieId) || movieId < 1) {
+    if (movieId === undefined || !Number.isFinite(movieId) || movieId < 1) {
       return res.status(400).json({ error: "Invalid 'id' route parameter" });
     }
     const tmdb = await getMovieDetailsFromTMDB(movieId);
@@ -96,7 +96,7 @@ export async function getMovieDetails(req: Request<{ id: string }>, res: Respons
 export async function searchMovies(req: Request<{}, { name: string }>, res: Response, next: NextFunction) {
   try {
     const name: string = String(req.query.name);
-    if (!name) {
+    if (name === undefined) {
       return res.status(400).json({ error: "Missing 'name' query parameter" });
     }
     const tmdb = await searchMoviesFromTMDB(name);
@@ -107,6 +107,45 @@ export async function searchMovies(req: Request<{}, { name: string }>, res: Resp
         ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
         : null,
     }));
+    return res.json({
+      page: tmdb.page,
+      total_pages: tmdb.total_pages,
+      results: movies
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * @description Search movies using the genre ID
+ * 
+ * @async 
+ * @function searchGenreMovies
+ * @param req: Request<{}, { genre: string }>
+ * @param res: Response
+ * @param next: NextFunction
+ * @returns Promise<void>
+ */
+export async function searchGenreMovies(req: Request<{}, { genre: string }>, res: Response, next: NextFunction) {
+  try {
+    const genre: string = String(req.query.genre);
+    if (genre === undefined) {
+      return res.status(400).json({ error: "El parámetro 'genre' es obligatorio" });
+    }
+    const tmdb = await searchGenreMoviesFromTMDB(genre);
+    const movies = tmdb.results.map((m: any) => ({
+      id: m.id,
+      title: m.title,
+      poster: m.poster_path
+        ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
+        : null,
+    }));
+    
+    if (movies.length === 0) {
+      return res.status(404).json({ error: "No se encontraron películas para el género especificado" });
+    }
+
     return res.json({
       page: tmdb.page,
       total_pages: tmdb.total_pages,
@@ -130,14 +169,18 @@ export async function searchMovies(req: Request<{}, { name: string }>, res: Resp
 export async function searchVideoById(req: Request<{}, { id: string }>, res: Response, next: NextFunction) {
   try {
     const id: string = String(req.query.id);
-    if (!id) {
-      return res.status(400).json({ error: "Missing 'id' query parameter" });
+    if (id === undefined) {
+      return res.status(400).json({ error: "El parámetro 'id' es obligatorio" });
     }
     const pexels = await getVideoById(id);
+    if(pexels?.status === 404){
+      return res.status(404).json({ error: "Video no encontrado" });
+    }
     return res.json(pexels);
+   
   } catch (err) {
     next(err);
   }
 }
 
-export default { getPopularMovies, getMovieDetails, searchMovies, searchVideoById };
+export default { getPopularMovies, getMovieDetails, searchMovies, searchGenreMovies, searchVideoById };

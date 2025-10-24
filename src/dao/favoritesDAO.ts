@@ -27,14 +27,14 @@ export class FavoritesDAO extends BaseDAO<MovieFavRow, MovieFavInsert, MovieFavU
     }
 
     async deleteByComposite(userId: string | number, movieId: string | number) {
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('moviesFav')
       // @ts-ignore
-      .delete()
+      .delete({count: 'exact'})
       .eq('userId', userId)
       .eq('movieId', movieId);
     if (error) throw new Error(`[${this.table}] deleteByComposite: ${error.message}`);
-    return true;
+    return count! > 0;
   }
 
 }
