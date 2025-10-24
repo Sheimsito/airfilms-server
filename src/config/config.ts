@@ -19,6 +19,8 @@ interface Config {
     appName: string;
     logoUrl: string;
     supportEmail: string;
+    apiKeyTmdb: string;
+    pexelsApiKey: string;
 }
 
 // This is the config object
@@ -37,6 +39,8 @@ const config: Config = {
     appName: process.env.APP_NAME || "Airfilms",
     logoUrl: process.env.LOGO_URL || "https://air-films-fend.vercel.app/AirFilms.png",
     supportEmail: process.env.SUPPORT_EMAIL || "support@airfilms.com",
+    apiKeyTmdb: process.env.API_KEY_TMDB || "48bc2c57dc7631fd743d75e5335bce95",
+    pexelsApiKey: process.env.PEXELS_API_KEY || "",
 }
 
 export default config;

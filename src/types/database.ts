@@ -32,6 +32,31 @@ export interface Database {
           isDeleted?: boolean;
         };
       };
+
+      moviesFav: {  
+        Row: {
+          userId: string;
+          movieId: number;
+          movieName: string;
+          posterURL: string;
+          createdAt: Date;
+          updatedAt: Date;
+          isDeleted: boolean;
+        };
+        Insert: {
+          userId: string;
+          movieId: number;
+          movieName: string;
+          posterURL: string;
+        };
+        Update: {
+          userId?: string;
+          movieId?: number;
+          movieName?: string;
+          posterURL?: string;
+          isDeleted?: boolean;
+        };
+      };
     };
   };
 }
@@ -40,4 +65,9 @@ export interface Database {
 export type UserRow = Database['public']['Tables']['users']['Row'];
 export type UserInsert = Database['public']['Tables']['users']['Insert'];
 export type UserUpdate = Database['public']['Tables']['users']['Update'];
+
+export type MovieFavRow = Database['public']['Tables']['moviesFav']['Row'];
+export type MovieFavInsert = Database['public']['Tables']['moviesFav']['Insert'];
+export type MovieFavUpdate = Database['public']['Tables']['moviesFav']['Update'];
+
 
