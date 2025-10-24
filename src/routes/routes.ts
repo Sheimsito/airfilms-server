@@ -3,6 +3,7 @@ import userRoutes from "./userRoutes.js";
 import { authenticateToken } from "../middleware/auth.js";
 import authRoutes from "./authRoutes.js";
 import movieRoutes from "./movieRoutes.js";
+
 const router = Router();
 
 
