@@ -19,9 +19,6 @@ const findFavorites = async (req: Request, res: Response, next: NextFunction) =>
             return res.status(401).json({ success: false, message: "Usuario no autenticado." });
         }
         const favorites = await favoritesDAO.findFavorites(userId);
-        if (favorites.length === 0) {
-            return res.status(404).json({ success: false, message: "No se encontraron favoritos." });
-        }
         return res.status(200).json({ success: true, favorites });
     } catch (err: unknown) {
         if (config.nodeEnv === "development") {
