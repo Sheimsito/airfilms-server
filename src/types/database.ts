@@ -55,6 +55,31 @@ export interface Database {
           movieName?: string;
           posterURL?: string;
           isDeleted?: boolean;
+        }; 
+      };
+
+      movieAssets: {
+        Row: {
+          movieId: number;
+          videoURL: string;
+          subEspURL: string;
+          subEngURL: string;
+          previewURL: string;
+          createdAt: Date;
+        };
+        Insert: {
+          movieId: number;
+          videoURL: string;
+          subEspURL: string;
+          subEngURL: string;
+          previewURL: string;
+        };
+        Update: {
+          movieId?: number;
+          videoURL?: string;
+          subEspURL?: string;
+          subEngURL?: string;
+          previewURL?: string;
         };
       };
     };
@@ -62,12 +87,23 @@ export interface Database {
 }
 
 // Helper types for easy access (extracted from Database schema)
+
+// User
 export type UserRow = Database['public']['Tables']['users']['Row'];
 export type UserInsert = Database['public']['Tables']['users']['Insert'];
 export type UserUpdate = Database['public']['Tables']['users']['Update'];
 
+// MovieFav
 export type MovieFavRow = Database['public']['Tables']['moviesFav']['Row'];
 export type MovieFavInsert = Database['public']['Tables']['moviesFav']['Insert'];
 export type MovieFavUpdate = Database['public']['Tables']['moviesFav']['Update'];
+
+// MovieAssets
+export type MovieAssetsRow = Database['public']['Tables']['movieAssets']['Row'];
+export type MovieAssetsInsert = Database['public']['Tables']['movieAssets']['Insert'];
+export type MovieAssetsUpdate = Database['public']['Tables']['movieAssets']['Update'];
+
+
+
 
 
