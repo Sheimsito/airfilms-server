@@ -20,22 +20,16 @@ export class FavoritesDAO extends BaseDAO<MovieFavRow, MovieFavInsert, MovieFavU
 
         return data as MovieFavRow[];
     }
-
+    
     async create(favorite: MovieFavInsert): Promise<MovieFavRow> {
         const favoriteCreated = await super.create(favorite);
         return favoriteCreated;
     }
 
     async deleteByComposite(userId: string | number, movieId: string | number) {
-    const { error, count } = await supabase
-      .from('moviesFav')
-      // @ts-ignore
-      .delete({count: 'exact'})
-      .eq('userId', userId)
-      .eq('movieId', movieId);
-    if (error) throw new Error(`[${this.table}] deleteByComposite: ${error.message}`);
-    return count! > 0;
-  }
+        const favoriteDeleted = await super.deleteByComposite(userId, movieId);
+        return favoriteDeleted;
+    }
 
 }
 

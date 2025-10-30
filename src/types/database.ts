@@ -82,6 +82,44 @@ export interface Database {
           previewURL?: string;
         };
       };
+
+      movieComments: {
+        Row: {
+          movieId: number;
+          userId: number;
+          comment: string;
+          createdAt: Date;
+        };
+        Insert: {
+          movieId: number;
+          userId: number;
+          comment: string;
+        };
+        Update: {
+          movieId?: number;
+          userId?: number;
+          comment?: string;
+        };
+      };
+
+      movieRatings: {
+        Row: {
+          movieId: number;
+          userId: number;
+          rating: number;
+          createdAt: Date;
+        };
+        Insert: {
+          movieId: number;
+          userId: number;
+          rating: number;
+        };
+        Update: {
+          movieId?: number;
+          userId?: number;
+          rating?: number;
+        };
+      };
     };
   };
 }
@@ -102,6 +140,16 @@ export type MovieFavUpdate = Database['public']['Tables']['moviesFav']['Update']
 export type MovieAssetsRow = Database['public']['Tables']['movieAssets']['Row'];
 export type MovieAssetsInsert = Database['public']['Tables']['movieAssets']['Insert'];
 export type MovieAssetsUpdate = Database['public']['Tables']['movieAssets']['Update'];
+
+// MovieComments
+export type MovieCommentsRow = Database['public']['Tables']['movieComments']['Row'];
+export type MovieCommentsInsert = Database['public']['Tables']['movieComments']['Insert'];
+export type MovieCommentsUpdate = Database['public']['Tables']['movieComments']['Update'];
+
+// MovieRatings
+export type MovieRatingsRow = Database['public']['Tables']['movieRatings']['Row'];
+export type MovieRatingsInsert = Database['public']['Tables']['movieRatings']['Insert'];
+export type MovieRatingsUpdate = Database['public']['Tables']['movieRatings']['Update'];
 
 
 
