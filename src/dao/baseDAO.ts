@@ -96,6 +96,17 @@ export class BaseDAO<Row, Insert, Update> {
     return true;
   }
 
+  async deleteByComposite(userId: string | number, movieId: string | number) {
+    const { error, count } = await supabase
+      .from(this.table)
+      // @ts-ignore
+      .delete({count: 'exact'})
+      .eq('userId', userId)
+      .eq('movieId', movieId);
+    if (error) throw new Error(`[${this.table}] deleteByComposite: ${error.message}`);
+    return count! > 0;
+  }
+
   // This is the deleteById method
   async deleteById(id: string | number) {
     const { error } = await supabase.from(this.table).delete().eq('id', id);

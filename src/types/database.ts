@@ -55,6 +55,69 @@ export interface Database {
           movieName?: string;
           posterURL?: string;
           isDeleted?: boolean;
+        }; 
+      };
+
+      movieAssets: {
+        Row: {
+          movieId: number;
+          videoURL: string;
+          subEspURL: string;
+          subEngURL: string;
+          previewURL: string;
+          createdAt: Date;
+        };
+        Insert: {
+          movieId: number;
+          videoURL: string;
+          subEspURL: string;
+          subEngURL: string;
+          previewURL: string;
+        };
+        Update: {
+          movieId?: number;
+          videoURL?: string;
+          subEspURL?: string;
+          subEngURL?: string;
+          previewURL?: string;
+        };
+      };
+
+      movieComments: {
+        Row: {
+          movieId: number;
+          userId: number;
+          comment: string;
+          createdAt: Date;
+        };
+        Insert: {
+          movieId: number;
+          userId: number;
+          comment: string;
+        };
+        Update: {
+          movieId?: number;
+          userId?: number;
+          comment?: string;
+        };
+      };
+
+      movieRatings: {
+        Row: {
+          movieId: number;
+          userId: number;
+          rating: number;
+          createdAt: Date;
+        };
+        Insert: {
+          movieId: number;
+          userId: number;
+          rating: number;
+        };
+        Update: {
+          movieId?: number;
+          userId?: number;
+          rating?: number;
         };
       };
     };
@@ -62,12 +125,33 @@ export interface Database {
 }
 
 // Helper types for easy access (extracted from Database schema)
+
+// User
 export type UserRow = Database['public']['Tables']['users']['Row'];
 export type UserInsert = Database['public']['Tables']['users']['Insert'];
 export type UserUpdate = Database['public']['Tables']['users']['Update'];
 
+// MovieFav
 export type MovieFavRow = Database['public']['Tables']['moviesFav']['Row'];
 export type MovieFavInsert = Database['public']['Tables']['moviesFav']['Insert'];
 export type MovieFavUpdate = Database['public']['Tables']['moviesFav']['Update'];
+
+// MovieAssets
+export type MovieAssetsRow = Database['public']['Tables']['movieAssets']['Row'];
+export type MovieAssetsInsert = Database['public']['Tables']['movieAssets']['Insert'];
+export type MovieAssetsUpdate = Database['public']['Tables']['movieAssets']['Update'];
+
+// MovieComments
+export type MovieCommentsRow = Database['public']['Tables']['movieComments']['Row'];
+export type MovieCommentsInsert = Database['public']['Tables']['movieComments']['Insert'];
+export type MovieCommentsUpdate = Database['public']['Tables']['movieComments']['Update'];
+
+// MovieRatings
+export type MovieRatingsRow = Database['public']['Tables']['movieRatings']['Row'];
+export type MovieRatingsInsert = Database['public']['Tables']['movieRatings']['Insert'];
+export type MovieRatingsUpdate = Database['public']['Tables']['movieRatings']['Update'];
+
+
+
 
 
