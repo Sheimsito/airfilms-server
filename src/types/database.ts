@@ -85,6 +85,7 @@ export interface Database {
 
       movieComments: {
         Row: {
+          id: string;
           movieId: number;
           userId: string;
           comment: string;
