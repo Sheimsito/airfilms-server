@@ -86,18 +86,18 @@ export interface Database {
       movieComments: {
         Row: {
           movieId: number;
-          userId: number;
+          userId: string;
           comment: string;
           createdAt: Date;
         };
         Insert: {
           movieId: number;
-          userId: number;
+          userId: string;
           comment: string;
         };
         Update: {
           movieId?: number;
-          userId?: number;
+          userId?: string;
           comment?: string;
         };
       };
@@ -105,18 +105,18 @@ export interface Database {
       movieRatings: {
         Row: {
           movieId: number;
-          userId: number;
+          userId: string;
           rating: number;
           createdAt: Date;
         };
         Insert: {
           movieId: number;
-          userId: number;
+          userId: string;
           rating: number;
         };
         Update: {
           movieId?: number;
-          userId?: number;
+          userId?: string;
           rating?: number;
         };
         

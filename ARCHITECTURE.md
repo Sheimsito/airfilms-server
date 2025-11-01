@@ -77,6 +77,7 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
 **Componentes:**
 - **Routes:** Definen los endpoints de la API
 - **Controllers:** Procesan las peticiones y delegan la lógica
+  - Auth, User, Movie, Favorites, Comment, Rating controllers
 - **Middleware:** Interceptan peticiones (autenticación, validación, manejo de errores)
 
 **Ubicación:** `src/routes/`, `src/controllers/`, `src/middleware/`
@@ -104,6 +105,9 @@ AirFilms Server es una API RESTful construida con **arquitectura en capas** que 
 - **Specific DAOs:** Extienden BaseDAO con operaciones específicas
   - **UserDAO:** Operaciones específicas de usuarios (findByEmail, updateResetPasswordJti)
   - **FavoritesDAO:** Operaciones específicas de favoritos (findFavorites, deleteByComposite)
+  - **CommentDAO:** Operaciones de comentarios de películas (listByMovieId, deleteByComposite)
+  - **RatingDAO:** Operaciones de calificaciones (listByMovieId, listRatingNumbers, createRating con upsert)
+  - **MovieAssetsDAO:** Operaciones de assets de películas (videos, subtítulos)
 
 **Ubicación:** `src/dao/`
 
@@ -397,7 +401,165 @@ Status: 404 Not Found
 Body: { "success": false, "message": "No se encontraron favoritos." }
 ```
 
+### Ejemplo 8: Agregar Comentario a una Película
 
+```
+1. CLIENT
+   └─> POST /api/movies/add-comment
+       Headers: Authorization: Bearer <token>
+       Body: { "movieId": 550, "comment": "¡Excelente película!" }
+          ↓
+2. MIDDLEWARE (authenticateToken)
+   ├─> Verifica JWT token
+   ├─> Extrae userId del token
+   └─> Inyecta req.user = { userId: "uuid" }
+          ↓
+3. CONTROLLER (commentController.insertComment)
+   ├─> Extrae movieId y comment del body
+   ├─> Extrae userId de req.user (inyectado por middleware)
+   ├─> Valida que movieId y comment estén presentes
+   ├─> Llama a commentDAO.create({ movieId, userId, comment })
+          ↓
+4. DAO (commentDAO.create)
+   ├─> Extiende BaseDAO.create()
+   ├─> Ejecuta: supabase.from('movieComments').insert([payload]).select('*').single()
+   └─> Retorna comentario creado
+          ↓
+5. DATABASE (Supabase)
+   ├─> Valida constraints (composite key: userId + movieId)
+   ├─> Inserta registro con timestamps automáticos
+   └─> Retorna datos insertados
+          ↓
+6. RESPONSE
+   └─> Status: 201 Created
+       Body: {
+         "success": true,
+         "commentCreated": {
+           "movieId": 550,
+           "userId": "uuid",
+           "comment": "¡Excelente película!",
+           "createdAt": "2025-01-13T..."
+         }
+       }
+```
+
+### Ejemplo 9: Obtener Comentarios de una Película
+
+```
+1. CLIENT
+   └─> GET /api/movies/get-comments/550
+       Query: ?page=1&limit=20&orderBy={"column":"createdAt","ascending":false}
+          ↓
+2. CONTROLLER (commentController.findComments)
+   ├─> Extrae movieId de params
+   ├─> Valida movieId (debe ser número válido)
+   ├─> Extrae query params (filters, limit, offset, page, orderBy)
+   ├─> Llama a commentDAO.listByMovieId(movieId, params)
+          ↓
+3. DAO (commentDAO.listByMovieId)
+   ├─> Ejecuta: supabase.from('movieComments')
+   │   .select('users(name, lastName), comment, createdAt', { count: 'exact' })
+   │   .eq('movieId', movieId)
+   │   .order(orderBy)
+   │   .range((page - 1) * limit, page * limit - 1)
+   └─> Retorna datos paginados con join a users
+          ↓
+4. DATABASE (Supabase)
+   ├─> Ejecuta query con join a tabla users
+   ├─> Filtra por movieId
+   ├─> Ordena según especificado
+   ├─> Aplica paginación
+   └─> Retorna comentarios con información de usuarios
+          ↓
+5. RESPONSE
+   └─> Status: 200 OK
+       Body: {
+         "success": true,
+         "comments": {
+           "data": [
+             {
+               "users": { "name": "Juan", "lastName": "García" },
+               "comment": "¡Excelente película!",
+               "createdAt": "2025-01-13T..."
+             }
+           ],
+           "count": 150
+         }
+       }
+```
+
+### Ejemplo 10: Agregar Calificación a una Película
+
+```
+1. CLIENT
+   └─> POST /api/movies/add-rating
+       Headers: Authorization: Bearer <token>
+       Body: { "movieId": 550, "rating": 5 }
+          ↓
+2. MIDDLEWARE (authenticateToken)
+   ├─> Verifica JWT token
+   ├─> Extrae userId del token
+   └─> Inyecta req.user = { userId: "uuid" }
+          ↓
+3. CONTROLLER (ratingController.createRating)
+   ├─> Extrae movieId y rating del body
+   ├─> Valida rating (debe estar entre 0 y 5)
+   ├─> Extrae userId de req.user
+   ├─> Llama a ratingDAO.createRating({ movieId, userId, rating })
+          ↓
+4. DAO (ratingDAO.createRating)
+   ├─> Usa UPSERT (insert or update) con composite key
+   ├─> Ejecuta: supabase.from('movieRatings')
+   │   .upsert([{ movieId, userId, rating }], 
+   │           { onConflict: 'userId,movieId' })
+   └─> Si el usuario ya calificó, actualiza; si no, crea
+          ↓
+5. DATABASE (Supabase)
+   ├─> Detecta conflicto en composite key (userId, movieId)
+   ├─> Actualiza rating existente o inserta nuevo
+   └─> Retorna éxito
+          ↓
+6. RESPONSE
+   └─> Status: 201 Created
+       Body: {
+         "success": true,
+         "ratingCreated": {
+           "movieId": 550,
+           "userId": "uuid",
+           "rating": 5
+         }
+       }
+```
+
+### Ejemplo 11: Obtener Estadísticas de Calificaciones de una Película
+
+```
+1. CLIENT
+   └─> GET /api/movies/get-ratings/550
+          ↓
+2. CONTROLLER (ratingController.findRatings)
+   ├─> Extrae movieId de params
+   ├─> Llama a ratingDAO.listByMovieId(movieId) → total count
+   ├─> Llama a ratingDAO.listRatingNumbers(movieId) → distribución
+          ↓
+3. DAO (ratingDAO.listRatingNumbers)
+   ├─> Loop for i = 1 to 5:
+   │   └─> supabase.from('movieRatings')
+   │       .select('rating', { count: 'exact', head: true })
+   │       .eq('rating', i).eq('movieId', movieId)
+   └─> Retorna array de conteos [count1, count2, count3, count4, count5]
+          ↓
+4. RESPONSE
+   └─> Status: 200 OK
+       Body: {
+         "success": true,
+         "ratings": { "totalCount": 1250 },
+         "ratingNumbers": {
+           "data": [50, 100, 200, 400, 500]
+           //            1☆  2☆  3☆  4☆  5☆
+         }
+       }
+```
 
 ---
 
@@ -484,12 +646,17 @@ src/
 │   ├── authController.ts   # Registro, login, logout, forgot/reset password, verify auth
 │   ├── userController.ts   # Perfil de usuario, actualización, soft delete
 │   ├── movieController.ts  # Gestión de películas (búsqueda, detalles, populares)
-│   └── favoritesController.ts # Gestión de películas favoritas
+│   ├── favoritesController.ts # Gestión de películas favoritas
+│   ├── commentController.ts  # Gestión de comentarios de películas
+│   └── ratingController.ts   # Gestión de calificaciones de películas
 │
 ├── dao/                 # 🗄️ Data Access Objects
 │   ├── baseDAO.ts       # DAO genérico (CRUD + soft delete)
 │   ├── userDAO.ts       # DAO específico de usuarios
-│   └── favoritesDAO.ts  # DAO específico de favoritos
+│   ├── favoritesDAO.ts  # DAO específico de favoritos
+│   ├── commentDAO.ts    # DAO específico de comentarios
+│   ├── ratingDAO.ts     # DAO específico de calificaciones
+│   └── movieAssetsDAO.ts # DAO específico de assets de películas
 │
 ├── lib/                 # 📚 Librerías externas
 │   └── supabaseClient.ts # Cliente de Supabase (tipado y genérico)
@@ -504,7 +671,7 @@ src/
 │   ├── index.ts         # Router principal que agrupa todas las rutas
 │   ├── authRoutes.ts    # Rutas de autenticación (públicas)
 │   ├── userRoutes.ts    # Rutas de usuario (protegidas)
-│   └── movieRoutes.ts   # Rutas de películas y favoritos ( la favoritos está protegida )
+│   └── movieRoutes.ts   # Rutas de películas, favoritos, comentarios y ratings (comentarios y ratings protegidas)
 │
 ├── service/             # 🌐 Servicios externos e integraciones
 │   ├── resendService.ts # Servicio de emails (Resend API)
@@ -593,6 +760,50 @@ export type UserUpdate = Database['public']['Tables']['users']['Update'];
 - Primary Key compuesta: `(userId, movieId)`
 - Foreign Key: `userId` → `users.id`
 - Unique constraint: No puede haber duplicados de la misma película por usuario
+
+#### Tabla: `movieComments`
+
+| Columna            | Tipo        | Descripción                      |
+|--------------------|-------------|----------------------------------|
+| movieId            | INTEGER     | ID de película de TMDB           |
+| userId             | INTEGER     | Foreign Key → users.id           |
+| comment            | TEXT        | Comentario del usuario           |
+| createdAt          | TIMESTAMP   | Fecha de creación                |
+
+**Constraints:**
+- Primary Key compuesta: `(userId, movieId)`
+- Foreign Key: `userId` → `users.id`
+- Un usuario puede tener solo un comentario por película
+
+#### Tabla: `movieRatings`
+
+| Columna            | Tipo        | Descripción                      |
+|--------------------|-------------|----------------------------------|
+| movieId            | INTEGER     | ID de película de TMDB           |
+| userId             | INTEGER     | Foreign Key → users.id           |
+| rating             | INTEGER     | Calificación (0-5)               |
+| createdAt          | TIMESTAMP   | Fecha de creación                |
+
+**Constraints:**
+- Primary Key compuesta: `(userId, movieId)`
+- Foreign Key: `userId` → `users.id`
+- Check constraint: `rating BETWEEN 0 AND 5`
+- UPSERT permitido: un usuario puede actualizar su calificación
+
+#### Tabla: `movieAssets`
+
+| Columna            | Tipo        | Descripción                      |
+|--------------------|-------------|----------------------------------|
+| movieId            | INTEGER     | ID de película de TMDB (PK)      |
+| videoURL           | VARCHAR     | URL del video completo           |
+| subEspURL          | VARCHAR     | URL de subtítulos en español     |
+| subEngURL          | VARCHAR     | URL de subtítulos en inglés      |
+| previewURL         | VARCHAR     | URL del preview/trailer          |
+| createdAt          | TIMESTAMP   | Fecha de creación                |
+
+**Constraints:**
+- Primary Key: `movieId`
+- Foreign Key: `movieId` → TMDB (referencia externa)
 
 ### Conexión
 
@@ -811,9 +1022,14 @@ class CachedMoviesApiService extends MoviesApiService {
 | **UserController** | Perfil, actualización, soft delete             | ✅ Implementado |
 | **MovieController** | Búsqueda, detalles, películas populares, videos | ✅ Implementado |
 | **FavoritesController** | Agregar, eliminar, listar favoritos          | ✅ Implementado |
+| **CommentController** | Agregar, eliminar, listar comentarios         | ✅ Implementado |
+| **RatingController** | Agregar, eliminar, listar calificaciones      | ✅ Implementado |
 | **BaseDAO**        | CRUD genérico + soft delete                    | ✅ Implementado |
 | **UserDAO**        | Operaciones específicas de usuarios            | ✅ Implementado |
 | **FavoritesDAO**   | Operaciones específicas de favoritos           | ✅ Implementado |
+| **CommentDAO**     | Operaciones de comentarios con paginación      | ✅ Implementado |
+| **RatingDAO**      | Operaciones de calificaciones con UPSERT       | ✅ Implementado |
+| **MovieAssetsDAO** | Operaciones de assets de películas             | ✅ Implementado |
 | **Auth Middleware** | JWT verification + rate limiting              | ✅ Implementado |
 | **Error Handler**  | Manejo de errores Supabase/PostgreSQL          | ✅ Implementado |
 | **Logger Middleware** | Logging de requests/responses               | ✅ Implementado |
@@ -825,6 +1041,6 @@ class CachedMoviesApiService extends MoviesApiService {
 ---
 
 **Última actualización:** Enero 2025  
-**Versión de arquitectura:** 2.0 
-**Estado:** Producción Ready (Backend Auth, User Management & Movies)
+**Versión de arquitectura:** 2.1 
+**Estado:** Producción Ready (Auth, Users, Movies, Favorites, Comments & Ratings)
 

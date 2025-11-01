@@ -62,7 +62,7 @@ const insertComment = async (req: Request<{}, {}, CreateCommentBody>, res: Respo
         if(!movieId || !comment){
             return res.status(400).json({ success: false, message: "Se requieren el id de la película y el comentario del usuario." });
         }
-        const userId: number = (req as any).user?.userId;
+        const userId: string = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ success: false, message: "Usuario no autenticado." });
         }
@@ -94,7 +94,7 @@ interface DeleteCommentBody {
 const deleteComment = async (req: Request<{}, {}, DeleteCommentBody>, res: Response, next: NextFunction) => {
     try {
         const { movieId } = req.body;
-        const userId: number = (req as any).user?.userId;
+        const userId: string = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ success: false, message: "Usuario no autenticado." });
         }

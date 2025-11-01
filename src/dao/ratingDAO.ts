@@ -52,7 +52,7 @@ export class RatingDAO extends BaseDAO<MovieRatingsRow, MovieRatingsInsert, Movi
     }
 
 
-    async deleteByComposite(userId: number, movieId: number): Promise<boolean> {
+    async deleteByComposite(userId: string, movieId: number): Promise<boolean> {
         const ratingDeleted = await super.deleteByComposite(userId, movieId);
         return ratingDeleted;
     }
