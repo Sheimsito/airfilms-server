@@ -3,6 +3,7 @@ import movieController from "../controllers/movieController.js";
 import favoritesController from "../controllers/favoritesController.js";
 import { authenticateToken } from "../middleware/auth.js";
 import commentController from "../controllers/commentController.js";
+import ratingController from "../controllers/ratingController.js";
 
 const router = Router();
 
@@ -22,6 +23,10 @@ router.post("/add-comment", authenticateToken, commentController.insertComment);
 router.delete("/delete-comment", authenticateToken, commentController.deleteComment);
 router.get("/get-comments/:movieId", commentController.findComments);
 
+// Rating Controller Routes
+router.post("/add-rating", authenticateToken, ratingController.createRating);
+router.delete("/delete-rating", authenticateToken, ratingController.deleteRating);
+router.get("/get-ratings/:movieId", ratingController.findRatings);
 
 
 
