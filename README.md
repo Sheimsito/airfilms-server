@@ -24,6 +24,8 @@ Backend API para la plataforma AirFilms construido con Node.js, Express, TypeScr
 - 👤 **Gestión de usuarios**: Perfil, actualización, soft delete
 - 🎬 **Sistema de películas**: Búsqueda, detalles, películas populares
 - ❤️ **Sistema de favoritos**: Agregar, eliminar y listar películas favoritas
+- 💬 **Sistema de comentarios**: Agregar, eliminar y listar comentarios de películas con paginación
+- ⭐ **Sistema de ratings**: Calificar películas (0-5 estrellas), ver estadísticas y distribución
 - 🎥 **Integración con APIs externas**: TMDB para películas, Pexels para videos
 - 🗄️ **Integración con Supabase** (PostgreSQL)
 - 🏗️ **Arquitectura en capas** (DAO, Services, Controllers)
@@ -190,11 +192,16 @@ airfilms-server/
 │   │   ├── authController.ts   # Autenticación, recuperación de contraseña y verificación
 │   │   ├── userController.ts   # Gestión de perfil de usuario
 │   │   ├── movieController.ts  # Gestión de películas y búsquedas
-│   │   └── favoritesController.ts # Gestión de películas favoritas
+│   │   ├── favoritesController.ts # Gestión de películas favoritas
+│   │   ├── commentController.ts  # Gestión de comentarios de películas
+│   │   └── ratingController.ts   # Gestión de calificaciones de películas
 │   ├── dao/                 # Data Access Objects
 │   │   ├── baseDAO.ts       # DAO genérico (CRUD + soft delete)
 │   │   ├── userDAO.ts       # DAO específico de usuarios
-│   │   └── favoritesDAO.ts  # DAO específico de favoritos
+│   │   ├── favoritesDAO.ts  # DAO específico de favoritos
+│   │   ├── commentDAO.ts    # DAO específico de comentarios
+│   │   ├── ratingDAO.ts     # DAO específico de calificaciones
+│   │   └── movieAssetsDAO.ts # DAO específico de assets de películas
 │   ├── lib/                 # Librerías y clientes externos
 │   │   └── supabaseClient.ts
 │   ├── middleware/          # Middlewares de Express
@@ -711,6 +718,193 @@ Obtiene todas las películas favoritas del usuario.
 
 ---
 
+### 💬 Comentarios (Protegidas excepto listar)
+
+Las rutas de comentarios bajo `/api/movies` requieren autenticación para crear/eliminar.
+
+**Headers requeridos (para POST/DELETE):**
+```
+Authorization: Bearer <token>
+```
+
+---
+
+#### `GET /api/movies/get-comments/:movieId`
+
+Obtiene todos los comentarios de una película con paginación.
+
+**Query Parameters (opcionales):**
+```
+?page=1&limit=20&orderBy={"column":"createdAt","ascending":false}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "comments": {
+    "data": [
+      {
+        "users": { "name": "Juan", "lastName": "García" },
+        "comment": "¡Excelente película!",
+        "createdAt": "2025-01-13T..."
+      }
+    ],
+    "count": 150
+  }
+}
+```
+
+---
+
+#### `POST /api/movies/add-comment`
+
+Agrega un comentario a una película.
+
+**Request Body:**
+```json
+{
+  "movieId": 550,
+  "comment": "¡Excelente película!"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "commentCreated": {
+    "movieId": 550,
+    "userId": "uuid",
+    "comment": "¡Excelente película!",
+    "createdAt": "2025-01-13T..."
+  }
+}
+```
+
+---
+
+#### `DELETE /api/movies/delete-comment`
+
+Elimina un comentario de una película.
+
+**Request Body:**
+```json
+{
+  "movieId": 550
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "commentDeleted": true
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "success": false,
+  "message": "Comentario no encontrado."
+}
+```
+
+---
+
+### ⭐ Ratings (Protegidas excepto listar)
+
+Las rutas de ratings bajo `/api/movies` requieren autenticación para crear/eliminar.
+
+**Headers requeridos (para POST/DELETE):**
+```
+Authorization: Bearer <token>
+```
+
+---
+
+#### `GET /api/movies/get-ratings/:movieId`
+
+Obtiene estadísticas de calificaciones de una película.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "ratings": {
+    "totalCount": 1250
+  },
+  "ratingNumbers": {
+    "data": [50, 100, 200, 400, 500]
+  }
+}
+```
+
+**Nota:** `ratingNumbers.data` contiene el conteo de cada calificación de 1⭐ a 5⭐.
+
+---
+
+#### `POST /api/movies/add-rating`
+
+Agrega o actualiza una calificación a una película.
+
+**Request Body:**
+```json
+{
+  "movieId": 550,
+  "rating": 5
+}
+```
+
+**Validaciones:**
+- `rating` debe estar entre 0 y 5
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "ratingCreated": {
+    "movieId": 550,
+    "userId": "uuid",
+    "rating": 5
+  }
+}
+```
+
+**Nota:** Si el usuario ya calificó la película, se actualiza la calificación existente.
+
+---
+
+#### `DELETE /api/movies/delete-rating`
+
+Elimina una calificación de una película.
+
+**Request Body:**
+```json
+{
+  "movieId": 550
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "ratingDeleted": true
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "success": false,
+  "message": "Calificación no encontrada."
+}
+```
+
+---
+
 ## 📜 Scripts Disponibles
 
 | Script         | Descripción                                    |
@@ -835,6 +1029,8 @@ Si encuentras algún bug o tienes alguna pregunta, por favor abre un [issue](htt
 - [x] Integración con Pexels API
 - [x] Sistema de películas (búsqueda, detalles, populares)
 - [x] Sistema de favoritos (agregar, eliminar, listar)
+- [x] Sistema de comentarios (agregar, eliminar, listar con paginación)
+- [x] Sistema de ratings (agregar, eliminar, estadísticas con distribución)
 - [x] Documentación (README + ARCHITECTURE)
 
 ### 🚧 En Desarrollo
@@ -842,9 +1038,9 @@ Si encuentras algún bug o tienes alguna pregunta, por favor abre un [issue](htt
 - [ ] Refactorización de endpoints GET (usar query params en lugar de body)
 - [ ] Validación mejorada con Joi/Zod
 - [ ] Cache para APIs externas
-- [ ] Sistema de reviews
 - [ ] Paginación avanzada
 - [ ] Búsqueda y filtros avanzados
+- [ ] Moderación de comentarios
 
 ### 📝 Roadmap Futuro
 
@@ -890,6 +1086,6 @@ curl -X GET http://localhost:5000/api/users/profile \
 **Desarrollado con ❤️ y TypeScript**
 
 **Última actualización:** Enero 2025  
-**Versión:** 1.5.0  
-**Estado:** Production Ready (Auth, User Management & Movies)
+**Versión:** 1.8.0  
+**Estado:** Production Ready (Auth, Users, Movies, Favorites, Comments & Ratings)
 
