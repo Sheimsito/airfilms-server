@@ -8,13 +8,13 @@ export class CommentDAO extends BaseDAO<MovieCommentsRow, MovieCommentsInsert, M
         super('movieComments');
     }
 
-    async listByMovieId(movieId: string, params?: {
+    async listByMovieId(movieId: number, params?: {
         filters?: QueryFilters<MovieCommentsRow>;
         limit?: number;
         offset?: number;
         page?: number;
         orderBy?: { column: keyof MovieCommentsRow; ascending?: boolean };
-    }): Promise<Paginated<MovieCommentsRow>> {
+    }): Promise<Paginated<{ users: { name: string; lastName: string }[], comment: string; createdAt: string }>> {
         const { filters = {}, limit = 20, offset = 0, page = 1, orderBy } = params ?? {};
 
         let query = supabase.from(this.table).select('users(name, lastName), comment, createdAt', { count: 'exact' })

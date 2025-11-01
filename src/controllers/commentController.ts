@@ -19,8 +19,11 @@ import { commentDAO } from "../dao/commentDAO.js";
 const findComments = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { movieId } = req.params;
+        if (!movieId || !Number.isFinite(Number(movieId)) || Number(movieId) < 1) {
+            return res.status(400).json({ success: false, message: "Se requiere el id de la película." });
+        }
         const { filters, limit, offset, orderBy, page } = req.query;
-        const comments = await commentDAO.listByMovieId(movieId, {
+        const comments = await commentDAO.listByMovieId(Number(movieId), {
             filters: filters ? JSON.parse(filters as string) : {},
             limit: limit ? Number(limit) : 20,
             offset: offset ? Number(offset) : 0,
