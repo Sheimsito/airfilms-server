@@ -119,6 +119,7 @@ export interface Database {
           userId?: number;
           rating?: number;
         };
+        
       };
     };
   };
