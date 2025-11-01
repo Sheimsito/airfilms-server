@@ -46,7 +46,7 @@ export class CommentDAO extends BaseDAO<MovieCommentsRow, MovieCommentsInsert, M
         return commentCreated;
     }
 
-    async deleteByComposite(userId: number, movieId: number): Promise<boolean> {
+    async deleteByComposite(userId: string, movieId: number): Promise<boolean> {
         const commentDeleted = await super.deleteByComposite(userId, movieId);
         return commentDeleted;
     }

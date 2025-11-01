@@ -52,7 +52,7 @@ const createRating = async (req: Request <{}, {}, createRatingBody>, res: Respon
         const { movieId , rating } = req.body ;
         const movieIdNumber = Number(movieId);
         const ratingNumber = Number(rating);
-        const userId: number = (req as any).user?.userId;
+        const userId: string = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ success: false, message: "Usuario no autenticado." });
         }
@@ -84,7 +84,7 @@ const deleteRating = async (req: Request, res: Response, next: NextFunction) => 
     try {
         const { movieId } = req.body;
         const movieIdNumber = Number(movieId);
-        const userId: number = (req as any).user?.userId;
+        const userId: string = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ success: false, message: "Usuario no autenticado." });
         }
