@@ -77,6 +77,7 @@ const insertComment = async (req: Request<{}, {}, CreateCommentBody>, res: Respo
 };
 
 interface DeleteCommentBody {
+    id: string;
     movieId: number;
 }
 
@@ -93,15 +94,17 @@ interface DeleteCommentBody {
 
 const deleteComment = async (req: Request<{}, {}, DeleteCommentBody>, res: Response, next: NextFunction) => {
     try {
-        const { movieId } = req.body;
+        const { id, movieId } = req.body;
         const userId: string = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ success: false, message: "Usuario no autenticado." });
         }
-        if (!movieId || !Number.isFinite(movieId) || movieId < 1 ) {
-            return res.status(400).json({ success: false, message: "Se requiere el id de la película." });
+        const isValidId = typeof id === 'string' && id.trim().length > 0 && /[a-f0-9-]{10,}/i.test(id);
+        const isValidMovieId = Number.isFinite(Number(movieId)) && Number(movieId) > 0;
+        if (!isValidId || !isValidMovieId) {
+            return res.status(400).json({ success: false, message: "Se requiere un id de comentario válido y el id de la película." });
         }
-        const commentDeleted = await commentDAO.deleteByComposite(userId, movieId);
+        const commentDeleted = await commentDAO.deleteSpecificComentary(userId, id, Number(movieId));
         if(!commentDeleted){
             return res.status(404).json({ success: false, message: "Comentario no encontrado." });
         }

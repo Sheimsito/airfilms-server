@@ -14,10 +14,10 @@ export class CommentDAO extends BaseDAO<MovieCommentsRow, MovieCommentsInsert, M
         offset?: number;
         page?: number;
         orderBy?: { column: keyof MovieCommentsRow; ascending?: boolean };
-    }): Promise<Paginated<{ users: { name: string; lastName: string }[], comment: string; createdAt: string }>> {
+    }): Promise<Paginated<{ id: string, userId: string, users: { name: string; lastName: string }[], comment: string; createdAt: string }>> {
         const { filters = {}, limit = 20, offset = 0, page = 1, orderBy } = params ?? {};
 
-        let query = supabase.from(this.table).select('users(name, lastName), comment, createdAt', { count: 'exact' })
+        let query = supabase.from(this.table).select(' id, userId, users(name, lastName), comment, createdAt', { count: 'exact' })
             .eq('movieId', movieId);
         
         // filtros simples igualdad
@@ -46,9 +46,16 @@ export class CommentDAO extends BaseDAO<MovieCommentsRow, MovieCommentsInsert, M
         return commentCreated;
     }
 
-    async deleteByComposite(userId: string, movieId: number): Promise<boolean> {
-        const commentDeleted = await super.deleteByComposite(userId, movieId);
-        return commentDeleted;
+    async deleteSpecificComentary(userId: string, id: string, movieId: number): Promise<boolean> {
+    const { error, count } = await supabase
+      .from(this.table)
+      // @ts-ignore
+      .delete({count: 'exact'})
+      .eq('userId', userId)
+      .eq('movieId', movieId)
+      .eq('id', id);
+    if (error) throw new Error(`[${this.table}] delete: ${error.message}`);
+    return count! > 0;
     }
 }
 
