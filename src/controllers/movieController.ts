@@ -1,6 +1,7 @@
 import { getMovieDetailsFromTMDB, getPopularMoviesFromTMDB, searchGenreMoviesFromTMDB, searchMoviesFromTMDB } from "../service/tmbdService.js";
 import { getSearchVideo, getVideoById } from "../service/pexelsService.js";
 import { Request, Response, NextFunction } from "express";
+import { movieAssetsDAO } from "../dao/movieAssetsDAO.js";
 
 interface GetPopularMoviesParams {
     page?: number;
@@ -47,21 +48,31 @@ export async function getPopularMovies(req: Request<{} , GetPopularMoviesParams>
  * 
  * @async 
  * @function getMovieDetails
- * @param req: Request<{ id: string }>
+ * @param req: Request<{ id: number }>
  * @param res: Response
  * @param next: NextFunction
  * @returns Promise<void>
  */
-export async function getMovieDetails(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+export async function getMovieDetails(req: Request<{ id: number }>, res: Response, next: NextFunction) {
   try {
     const movieId = Number(req.query.id);
     if (movieId === undefined || !Number.isFinite(movieId) || movieId < 1) {
-      return res.status(400).json({ error: "Invalid 'id' route parameter" });
+      return res.status(400).json({ error: "El id no es válido, debe ser un número mayor a 0." });
     }
     const tmdb = await getMovieDetailsFromTMDB(movieId);
-    const genre: string = tmdb.genres[0].name;
-    const video = await getSearchVideo(genre);
+    
+    let genre: string;
+    if( tmdb.genres.length === 0){
+      genre = tmdb.name;
+    }else{
+      genre = tmdb.genres[0].name;
+    }
+    
+    const movieAssets = await movieAssetsDAO.findAssetsByMovieId(movieId);
+    let video: any;
+    video = await getSearchVideo(genre);
 
+    const movieAssetsData = movieAssets ? movieAssets : [];
     const data = {
       id: tmdb.id,             // Movie ID 
       title: tmdb.title,       // Movie title
@@ -73,9 +84,9 @@ export async function getMovieDetails(req: Request<{ id: string }>, res: Respons
       releaseDate: tmdb.release_date, // Movie release date
       runtime:  tmdb.runtime, // Movie time in minutes
       original_language: (tmdb.original_language).toUpperCase(), // Movie original language
-      status: tmdb.status, // Movie status      
-      videoId: video[0].id, // Video id
-      videoThumbnail: video[0].thumbnail, // Video thumbnail
+      status: tmdb.status, // Movie status
+      ... (movieAssetsData.length > 0 ? { videoId: movieId, videoThumbnail: movieAssetsData[0].previewURL }
+         : {videoId: video[0].id, videoThumbnail: video[0].thumbnail})
     };
     return res.json(data);
   } catch (err) {
@@ -97,7 +108,7 @@ export async function searchMovies(req: Request<{}, { name: string }>, res: Resp
   try {
     const name: string = String(req.query.name);
     if (name === undefined) {
-      return res.status(400).json({ error: "Missing 'name' query parameter" });
+      return res.status(400).json({ error: "El parámetro 'name' es obligatorio." });
     }
     const tmdb = await searchMoviesFromTMDB(name);
     const movies = tmdb.results.map((m: any) => ({
@@ -166,17 +177,62 @@ export async function searchGenreMovies(req: Request<{}, { genre: string }>, res
  * @param next: NextFunction
  * @returns Promise<void>
  */
-export async function searchVideoById(req: Request<{}, { id: string }>, res: Response, next: NextFunction) {
+export async function searchVideoById(req: Request<{}, { id: number }>, res: Response, next: NextFunction) {
   try {
-    const id: string = String(req.query.id);
-    if (id === undefined) {
+    const id: number = Number(req.query.id);
+    if (id === undefined || !Number.isFinite(id) || id < 1) {
       return res.status(400).json({ error: "El parámetro 'id' es obligatorio" });
     }
-    const pexels = await getVideoById(id);
-    if(pexels?.status === 404){
-      return res.status(404).json({ error: "Video no encontrado" });
+    const movieAssets = await movieAssetsDAO.findAssetsByMovieId(id);
+    let pexels: any;
+    if (movieAssets.length <= 0) {
+       pexels = await getVideoById(id.toString());
+       pexels.subtitles = 'null';
+       if(pexels?.status === 404){
+        return res.status(404).json({ error: "Video no encontrado" });
+      }
     }
-    return res.json(pexels);
+
+    const result = {
+      id: pexels?.id ?? null,
+      width: pexels?.width ?? null,
+      height: pexels?.height ?? null,
+      duration: pexels?.duration ?? null,
+      fullres: pexels?.fullres ?? null,
+      tags: pexels?.tags ?? null,
+      url: pexels?.url ?? null,
+      image: pexels?.image ?? null,
+      avg_color: pexels?.avg_color ?? null,
+      user: pexels?.user ?? null,
+      video_files: pexels?.video_files ??
+      [{
+        id: id.toString(),
+        quality: 'hd',
+        file_type: "video/mp4",
+        width: '1920',
+        height: '1080',
+        fps: '',
+        link: movieAssets[0].videoURL,
+        size: '',
+      }],
+
+      subtitles: pexels?.subtitles ?? 
+      [{
+        id: '1',
+        lang: 'es',
+        file_type: 'vtt',
+        link: movieAssets[0].subEspURL,
+      },
+      {
+        id: '2',
+        lang: 'en',
+        file_type: 'vtt',
+        link: movieAssets[0].subEngURL,
+      }],
+
+    }
+
+    return res.json(result);
    
   } catch (err) {
     next(err);
