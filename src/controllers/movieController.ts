@@ -187,7 +187,7 @@ export async function searchVideoById(req: Request<{}, { id: number }>, res: Res
     let pexels: any;
     if (movieAssets.length <= 0) {
        pexels = await getVideoById(id.toString());
-       pexels.subtitles = 'null';
+       pexels.subtitles = [];
        if(pexels?.status === 404){
         return res.status(404).json({ error: "Video no encontrado" });
       }
@@ -231,7 +231,6 @@ export async function searchVideoById(req: Request<{}, { id: number }>, res: Res
       }],
 
     }
-
     return res.json(result);
    
   } catch (err) {
