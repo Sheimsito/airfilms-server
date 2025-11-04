@@ -94,12 +94,12 @@ interface DeleteCommentBody {
 
 const deleteComment = async (req: Request<{}, {}, DeleteCommentBody>, res: Response, next: NextFunction) => {
     try {
-        const { id, movieId } = req.body;
+        let { id, movieId } = req.body;
         const userId: string = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ success: false, message: "Usuario no autenticado." });
         }
-        const isValidId = typeof id === 'string' && id.trim().length > 0 && /[a-f0-9-]{10,}/i.test(id);
+        const isValidId = typeof id === 'string' && id.trim().length > 0;
         const isValidMovieId = Number.isFinite(Number(movieId)) && Number(movieId) > 0;
         if (!isValidId || !isValidMovieId) {
             return res.status(400).json({ success: false, message: "Se requiere un id de comentario válido y el id de la película." });

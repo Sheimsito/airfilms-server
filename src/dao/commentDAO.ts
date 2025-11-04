@@ -45,7 +45,7 @@ export class CommentDAO extends BaseDAO<MovieCommentsRow, MovieCommentsInsert, M
         const commentCreated = await super.create(comment);
         return commentCreated;
     }
-
+    
     async deleteSpecificComentary(userId: string, id: string, movieId: number): Promise<boolean> {
     const { error, count } = await supabase
       .from(this.table)
