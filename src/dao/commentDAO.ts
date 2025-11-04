@@ -46,7 +46,7 @@ export class CommentDAO extends BaseDAO<MovieCommentsRow, MovieCommentsInsert, M
         return commentCreated;
     }
 
-    async deleteSpecificComentary(userId: string, id: string, movieId: number): Promise<boolean> {
+    async deleteSpecificComentary(userId: string, comment: string, movieId: number): Promise<boolean> {
     const { error, count } = await supabase
       .from(this.table)
       // @ts-ignore
