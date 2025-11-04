@@ -77,7 +77,7 @@ const insertComment = async (req: Request<{}, {}, CreateCommentBody>, res: Respo
 };
 
 interface DeleteCommentBody {
-    id: string;
+    comment: string;
     movieId: number;
 }
 
