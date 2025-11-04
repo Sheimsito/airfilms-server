@@ -40,7 +40,7 @@ const findComments = async (req: Request, res: Response, next: NextFunction) => 
 };
 interface CreateCommentBody {
     movieId: number;
-    comment: string;
+    id: string;
 }
 
 /**
