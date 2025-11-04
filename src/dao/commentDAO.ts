@@ -46,17 +46,18 @@ export class CommentDAO extends BaseDAO<MovieCommentsRow, MovieCommentsInsert, M
         return commentCreated;
     }
 
-    async deleteSpecificComentary(userId: string, comment: string, movieId: number): Promise<boolean> {
-    const { error, count } = await supabase
-      .from(this.table)
-      // @ts-ignore
-      .delete({count: 'exact'})
-      .eq('userId', userId)
-      .eq('movieId', movieId)
-      .eq('id', id);
-    if (error) throw new Error(`[${this.table}] delete: ${error.message}`);
-    return count! > 0;
-    }
+async deleteSpecificComentary(userId: string, comment: number, movieId: number): Promise<boolean> {
+  const { error, count } = await supabase
+    .from(this.table)
+    // @ts-ignore
+    .delete({count: 'exact'})
+    .eq('userId', userId)
+    .eq('movieId', movieId)
+    .eq('comment', comment);  // ⚠️ Cambiar 'id' por 'comment'
+    
+  if (error) throw new Error(`[${this.table}] delete: ${error.message}`);
+  return count! > 0;
+}
 }
 
 export const commentDAO = new CommentDAO();
